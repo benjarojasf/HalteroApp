@@ -4,10 +4,10 @@ import datetime
 import csv
 import os
 
-# --- LISTA MAESTRA ---
+# --- LISTA MAESTRA (V33 - Corregida) ---
 EJERCICIOS_BASE = [
     ("Olímpico - Competencia", "Snatch (Arrancada)"),
-    ("Olímpico - Competencia", "Clean & Jerk (Envión)"),
+    ("Olímpico - Competencia", "Clean & Jerk (Envión)"), # Corregido
     ("Variantes Snatch", "Power Snatch (Arrancada de Potencia)"),
     ("Variantes Snatch", "Hang Snatch (Arrancada Colgante)"),
     ("Variantes Snatch", "Block Snatch (Arrancada sobre Soportes)"),
@@ -87,10 +87,11 @@ def leer_ejercicios():
     return ejercicios_dict
 
 async def main(page: ft.Page):
-    # --- CONFIGURACIÓN GENERAL ---
+    # --- CONFIGURACIÓN ---
     page.title = "Haltero Tracker"
     page.padding = 0 
     page.scroll = None 
+    
     page.theme = ft.Theme(color_scheme_seed=ft.Colors.BLUE, use_material3=True)
     page.theme_mode = ft.ThemeMode.LIGHT 
     page.bgcolor = ft.Colors.WHITE
@@ -99,7 +100,7 @@ async def main(page: ft.Page):
     DB_EJERCICIOS = leer_ejercicios()
     lista_categorias = list(DB_EJERCICIOS.keys())
 
-    # --- VARIABLES GLOBALES ---
+    # Variables Globales
     segundos = 0
     contando = False
     numero_serie_global = 1 
@@ -111,12 +112,12 @@ async def main(page: ft.Page):
     categoria_a_editar_original = ""
 
     # ==========================================
-    #   VISTA INICIO (Definida primero, sin botón aún)
+    #   VISTA INICIO
     # ==========================================
     vista_inicio = ft.Container(
         content=ft.Column(
             controls=[
-                ft.Icon(ft.Icons.FITNESS_CENTER, size=100, color=ft.Colors.BLACK),
+                ft.Icon(ft.Icons.FITNESS_CENTER, size=120, color=ft.Colors.BLACK),
                 ft.Text("Haltero Tracker", size=32, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
@@ -131,8 +132,7 @@ async def main(page: ft.Page):
     # ==========================================
     #   PESTAÑA 1: ENTRENAMIENTO
     # ==========================================
-    
-    # 1. Calendario y Fecha
+
     def cambiar_fecha(e):
         campo_fecha_texto.value = date_picker.value.strftime("%d-%m-%Y")
         page.update()
@@ -141,7 +141,6 @@ async def main(page: ft.Page):
     btn_calendario = ft.IconButton(icon=ft.Icons.CALENDAR_MONTH, icon_color=ft.Colors.PRIMARY, on_click=lambda _: page.open(date_picker))
     campo_fecha_texto = ft.TextField(value=fecha_hoy_txt, width=120, read_only=True, text_align=ft.TextAlign.CENTER, border=ft.InputBorder.NONE, text_style=ft.TextStyle(weight=ft.FontWeight.BOLD))
 
-    # 2. Cronómetro
     texto_cronometro = ft.Text(value="00:00", size=30, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE)
     contenedor_cronometro_ui = ft.Container(
         content=ft.Row([ft.Icon(ft.Icons.TIMER, color=ft.Colors.WHITE), texto_cronometro], alignment=ft.MainAxisAlignment.CENTER),
@@ -160,7 +159,17 @@ async def main(page: ft.Page):
 
     switch_crono = ft.Switch(label="Activar Cronómetro", value=False, on_change=cambiar_estado_crono)
 
-    # 3. Lista y Controles
+    async def resetear_cronometro():
+        nonlocal segundos
+        if switch_crono.value:
+            segundos = 0
+            texto_cronometro.value = "00:00"
+            texto_cronometro.color = ft.Colors.GREEN_400
+            page.update()
+            await asyncio.sleep(0.5)
+            texto_cronometro.color = ft.Colors.WHITE
+            page.update()
+
     lista_series = ft.ListView(expand=True, spacing=10, padding=20)
     campo_kilos = ft.TextField(label="Kilos", width=100, keyboard_type=ft.KeyboardType.NUMBER, border_color=ft.Colors.PRIMARY)
     campo_reps = ft.TextField(label="Reps", width=100, keyboard_type=ft.KeyboardType.NUMBER, border_color=ft.Colors.PRIMARY)
@@ -366,10 +375,7 @@ async def main(page: ft.Page):
         expand=True, spacing=0
     )
 
-    # ==========================================
-    #   PESTAÑA 2: RÉCORDS
-    # ==========================================
-    
+    # --- PESTAÑA RÉCORDS ---
     def cambiar_fecha_rm(e):
         campo_fecha_rm.value = date_picker_rm.value.strftime("%d-%m-%Y")
         page.update()
@@ -527,7 +533,6 @@ async def main(page: ft.Page):
             writer = csv.writer(file)
             writer.writerows(filas)
         page.close(dlg_historial_opciones)
-        page.close(dlg_detalle_ejercicio) 
         page.snack_bar = ft.SnackBar(ft.Text("Registro eliminado"), bgcolor=ft.Colors.RED)
         page.snack_bar.open = True
         actualizar_historial(None)
@@ -621,17 +626,7 @@ async def main(page: ft.Page):
 
     actualizar_historial(None)
 
-    vista_historial = ft.Container(
-        content=ft.Column(
-            controls=[
-                ft.Text("Historial de Entrenamientos", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
-                ft.Text("Toca un ejercicio para ver el detalle de las series", size=12, color=ft.Colors.GREY),
-                dropdown_filtro_historial,
-                ft.Divider(),
-                columna_historial
-            ], expand=True),
-        padding=10, expand=True
-    )
+    vista_historial = ft.Container(content=ft.Column(controls=[ft.Text("Historial de Entrenamientos", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK), ft.Text("Toca un ejercicio para ver el detalle de las series", size=12, color=ft.Colors.GREY), dropdown_filtro_historial, ft.Divider(), columna_historial], expand=True), padding=10, expand=True)
 
     # --- 5. PESTAÑA EJERCICIOS ---
     lista_gestion_ejercicios = ft.ListView(expand=True, spacing=10)
@@ -730,19 +725,16 @@ async def main(page: ft.Page):
     tab_inicio = ft.Tab(text="Inicio", icon=ft.Icons.HOME, content=vista_inicio)
     mis_tabs = ft.Tabs(selected_index=0, animation_duration=300, tab_alignment=ft.TabAlignment.CENTER, tabs=[tab_inicio, ft.Tab(text="Entrenar", icon=ft.Icons.FITNESS_CENTER, content=vista_entrenar), ft.Tab(text="Récords", icon=ft.Icons.EMOJI_EVENTS, content=vista_records), ft.Tab(text="Historial", icon=ft.Icons.HISTORY, content=vista_historial), ft.Tab(text="Ejercicios", icon=ft.Icons.LIST, content=vista_ejercicios)], expand=True)
 
-    # Función para iniciar la app ocultando la vista de inicio
     def iniciar_app(e):
-        # 1. Quitar la pestaña de inicio de la lista
-        mis_tabs.tabs.pop(0)
-        # 2. Seleccionar la nueva primera pestaña (Entrenar)
-        mis_tabs.selected_index = 0
-        # 3. Actualizar
+        mis_tabs.tabs.pop(0) 
+        mis_tabs.selected_index = 0 
         page.update()
 
-    # Inyectar el botón en la vista de inicio
     vista_inicio.content.controls.append(ft.ElevatedButton("Comenzar", on_click=iniciar_app, bgcolor=ft.Colors.PRIMARY, color=ft.Colors.WHITE))
 
-    page.add(ft.SafeArea(mis_tabs)) 
+    # AGREGAMOS SAFEAREA Y EL UPDATE INICIAL (Corrección Android)
+    page.add(ft.SafeArea(mis_tabs, expand=True))
+    page.update() 
 
     while True:
         if switch_crono.value:
