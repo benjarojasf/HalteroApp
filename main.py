@@ -217,15 +217,22 @@ async def main(page: ft.Page):
     # ==========================================
     #   PESTAÑA 1: ENTRENAMIENTO
     # ==========================================
+
     def cambiar_fecha(e):
         campo_fecha_texto.value = date_picker.value.strftime("%d-%m-%Y")
         page.update()
+
     date_picker = ft.DatePicker(on_change=cambiar_fecha)
     btn_calendario = ft.IconButton(icon=ft.Icons.CALENDAR_MONTH, icon_color=ft.Colors.PRIMARY, on_click=lambda _: page.open(date_picker))
     campo_fecha_texto = ft.TextField(value=fecha_hoy_txt, width=120, read_only=True, text_align=ft.TextAlign.CENTER, border=ft.InputBorder.NONE, text_style=ft.TextStyle(weight=ft.FontWeight.BOLD))
+
     texto_cronometro = ft.Text(value="00:00", size=30, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE)
-    contenedor_cronometro_ui = ft.Container(content=ft.Row([ft.Icon(ft.Icons.TIMER, color=ft.Colors.WHITE), texto_cronometro], alignment=ft.MainAxisAlignment.CENTER), bgcolor=ft.Colors.BLUE_GREY_900, padding=10, border_radius=10, margin=ft.margin.only(bottom=10))
+    contenedor_cronometro_ui = ft.Container(
+        content=ft.Row([ft.Icon(ft.Icons.TIMER, color=ft.Colors.WHITE), texto_cronometro], alignment=ft.MainAxisAlignment.CENTER),
+        bgcolor=ft.Colors.BLUE_GREY_900, padding=10, border_radius=10, margin=ft.margin.only(bottom=10)
+    )
     fila_cronometro = ft.Row(controls=[contenedor_cronometro_ui], alignment=ft.MainAxisAlignment.CENTER, visible=False)
+
     def cambiar_estado_crono(e):
         nonlocal contando, segundos
         contando = switch_crono.value
@@ -234,7 +241,9 @@ async def main(page: ft.Page):
             segundos = 0
             texto_cronometro.value = "00:00"
         page.update()
+
     switch_crono = ft.Switch(label="Activar Cronómetro", value=False, on_change=cambiar_estado_crono)
+
     async def resetear_cronometro():
         nonlocal segundos
         if switch_crono.value:
@@ -245,10 +254,57 @@ async def main(page: ft.Page):
             await asyncio.sleep(0.5)
             texto_cronometro.color = ft.Colors.WHITE
             page.update()
+
     lista_series = ft.ListView(expand=True, spacing=10, padding=20)
-    campo_kilos = ft.TextField(label="Kilos", width=100, keyboard_type=ft.KeyboardType.NUMBER, border_color=ft.Colors.PRIMARY)
-    campo_reps = ft.TextField(label="Reps", width=100, keyboard_type=ft.KeyboardType.NUMBER, border_color=ft.Colors.PRIMARY)
+    
+    # --- SISTEMA DE INPUT ---
+    campo_kilos = ft.TextField(label="Kilos", width=60, keyboard_type=ft.KeyboardType.NUMBER, border_color=ft.Colors.PRIMARY, text_align=ft.TextAlign.CENTER, content_padding=5)
+    campo_reps = ft.TextField(label="Reps", width=50, keyboard_type=ft.KeyboardType.NUMBER, border_color=ft.Colors.PRIMARY, text_align=ft.TextAlign.CENTER, content_padding=5)
+
+    def ajustar_kilos(delta):
+        try:
+            valor_actual = float(campo_kilos.value) if campo_kilos.value else 0
+        except ValueError:
+            valor_actual = 0
+        
+        nuevo_val = max(0, valor_actual + delta)
+        
+        if nuevo_val.is_integer():
+            campo_kilos.value = str(int(nuevo_val))
+        else:
+            campo_kilos.value = str(nuevo_val)
+        page.update()
+
+    def ajustar_reps(delta):
+        try:
+            valor_actual = int(campo_reps.value) if campo_reps.value else 0
+        except ValueError:
+            valor_actual = 0
+        
+        nuevo_val = max(0, valor_actual + delta)
+        campo_reps.value = str(nuevo_val)
+        page.update()
+
+    input_kilos_group = ft.Row(
+        controls=[
+            ft.IconButton(ft.Icons.REMOVE, on_click=lambda e: ajustar_kilos(-1), icon_color=ft.Colors.RED, icon_size=20),
+            campo_kilos,
+            ft.IconButton(ft.Icons.ADD, on_click=lambda e: ajustar_kilos(1), icon_color=ft.Colors.GREEN, icon_size=20),
+        ], 
+        spacing=0
+    )
+
+    input_reps_group = ft.Row(
+        controls=[
+            ft.IconButton(ft.Icons.REMOVE, on_click=lambda e: ajustar_reps(-1), icon_color=ft.Colors.RED, icon_size=20),
+            campo_reps,
+            ft.IconButton(ft.Icons.ADD, on_click=lambda e: ajustar_reps(1), icon_color=ft.Colors.GREEN, icon_size=20),
+        ],
+        spacing=0
+    )
+    
     dd_ejercicio = ft.Dropdown(label="Ejercicio", width=float('inf'), disabled=True, options=[])
+
     def cambio_categoria(e):
         cat_selec = dd_categoria.value
         if cat_selec in DB_EJERCICIOS:
@@ -257,10 +313,24 @@ async def main(page: ft.Page):
             dd_ejercicio.value = opciones[0].key 
             dd_ejercicio.disabled = False
         page.update()
+
     dd_categoria = ft.Dropdown(label="Categoría", width=float('inf'), options=[ft.dropdown.Option(c) for c in lista_categorias], on_change=cambio_categoria)
-    contenedor_setup_inicial = ft.Column(controls=[ft.Row([ft.Text("Fecha:", weight=ft.FontWeight.BOLD, size=16), btn_calendario, campo_fecha_texto], vertical_alignment=ft.CrossAxisAlignment.CENTER), dd_categoria, dd_ejercicio], spacing=10, visible=True)
-    texto_resumen_activo = ft.Text("", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_GREY_800)
-    contenedor_resumen_activo = ft.Container(content=ft.Row([ft.Icon(ft.Icons.FITNESS_CENTER_OUTLINED, size=20), texto_resumen_activo], alignment=ft.MainAxisAlignment.CENTER), padding=10, bgcolor=ft.Colors.BLUE_50, border_radius=5, visible=False)
+    
+    contenedor_setup_inicial = ft.Column(
+        controls=[
+            ft.Row([ft.Text("Fecha:", weight=ft.FontWeight.BOLD, size=16), btn_calendario, campo_fecha_texto], vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            dd_categoria,
+            dd_ejercicio
+        ],
+        spacing=10, visible=True
+    )
+    
+    texto_resumen_activo = ft.Text("", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_GREY_800, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS)
+    contenedor_resumen_activo = ft.Container(
+        content=ft.Row([ft.Icon(ft.Icons.FITNESS_CENTER_OUTLINED, size=20), ft.Container(content=texto_resumen_activo, expand=True)], alignment=ft.MainAxisAlignment.CENTER),
+        padding=10, bgcolor=ft.Colors.BLUE_50, border_radius=5, visible=False
+    )
+
     def resetear_interfaz_entrenamiento():
         nonlocal numero_serie_global, segundos
         lista_series.controls.clear()
@@ -278,6 +348,7 @@ async def main(page: ft.Page):
         dd_ejercicio.value = None
         dd_ejercicio.disabled = True
         dd_ejercicio.options = []
+
     def finalizar_entrenamiento(e):
         if len(lista_series.controls) == 0:
             page.snack_bar = ft.SnackBar(ft.Text("No hay series para guardar"))
@@ -299,80 +370,133 @@ async def main(page: ft.Page):
         actualizar_tabla_records() 
         actualizar_grafico(None)
         page.update()
+
     def cancelar_entrenamiento(e):
         resetear_interfaz_entrenamiento()
         page.snack_bar = ft.SnackBar(ft.Text("Cancelado"), bgcolor=ft.Colors.RED)
         page.snack_bar.open = True
         page.update()
+
     def agregar_serie(e):
         nonlocal numero_serie_global
         if not campo_kilos.value or not campo_reps.value or not dd_ejercicio.value: return 
+        
         if contenedor_setup_inicial.visible:
             contenedor_setup_inicial.visible = False
             contenedor_resumen_activo.visible = True
             texto_resumen_activo.value = f"{dd_ejercicio.value}"
             page.update()
-        for tarjeta in lista_series.controls:
-            tarjeta.border = ft.border.all(1, ft.Colors.GREY_200)
-            tarjeta.content.controls[0].controls[0].color = ft.Colors.GREY_400 
-            tarjeta.content.controls[1].color = ft.Colors.GREY_400 
-            fila_botones_responsive = tarjeta.content.controls[3] 
-            for boton in fila_botones_responsive.controls: 
-                boton.color = ft.Colors.GREY_500
-                boton.icon_color = ft.Colors.GREY_500
+
         mi_numero_serie = numero_serie_global
         val_kilos = campo_kilos.value
         val_reps = campo_reps.value
         val_ejercicio = dd_ejercicio.value 
-        txt_titulo = ft.Text(f"Serie #{mi_numero_serie}", weight=ft.FontWeight.BOLD, size=14, color=ft.Colors.BLACK)
-        txt_datos = ft.Text(f"{val_kilos} kg  x  {val_reps} reps", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)
-        async def click_sensacion(e):
-            btn_bien.bgcolor = ft.Colors.GREEN_100
-            btn_regular.bgcolor = ft.Colors.ORANGE_100
-            btn_mal.bgcolor = ft.Colors.RED_100
-            btn_nulo.bgcolor = ft.Colors.GREY_200 
-            btn_nulo.color = ft.Colors.BLACK
-            btn_nulo.icon_color = ft.Colors.RED
-            sensacion = e.control.text
-            if sensacion == "Bien": e.control.bgcolor = ft.Colors.GREEN_400
-            elif sensacion == "Regular": e.control.bgcolor = ft.Colors.ORANGE_400
-            elif sensacion == "Mal": e.control.bgcolor = ft.Colors.RED_400
-            elif sensacion == "Nulo": 
-                e.control.bgcolor = ft.Colors.GREY_800
-                e.control.color = ft.Colors.WHITE
-            nueva_tarjeta.data["sensacion"] = sensacion
-            page.update()
-            if mi_numero_serie == (numero_serie_global - 1): await resetear_cronometro()
-        estilo_btn = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=5), padding=5)
-        btn_bien = ft.ElevatedButton("Bien", on_click=click_sensacion, bgcolor=ft.Colors.GREEN_100, color=ft.Colors.BLACK, style=estilo_btn, col={"xs": 6, "sm": 3})
-        btn_regular = ft.ElevatedButton("Regular", on_click=click_sensacion, bgcolor=ft.Colors.ORANGE_100, color=ft.Colors.BLACK, style=estilo_btn, col={"xs": 6, "sm": 3})
-        btn_mal = ft.ElevatedButton("Mal", on_click=click_sensacion, bgcolor=ft.Colors.RED_100, color=ft.Colors.BLACK, style=estilo_btn, col={"xs": 6, "sm": 3})
-        btn_nulo = ft.ElevatedButton("Nulo", icon=ft.Icons.FLAG, icon_color=ft.Colors.RED, on_click=click_sensacion, bgcolor=ft.Colors.GREY_200, color=ft.Colors.BLACK, style=estilo_btn, col={"xs": 6, "sm": 3})
+
+        edit_kilos = ft.TextField(label="Kilos", value=val_kilos)
+        edit_reps = ft.TextField(label="Reps", value=val_reps)
+        
+        texto_info_serie = ft.Text(f"Serie #{mi_numero_serie}: {val_kilos} kg x {val_reps} reps", weight=ft.FontWeight.BOLD, size=16, color=ft.Colors.BLACK, expand=True)
+
         def guardar_edicion(e):
-            txt_datos.value = f"{edit_kilos.value} kg  x  {edit_reps.value} reps"
+            texto_info_serie.value = f"Serie #{mi_numero_serie}: {edit_kilos.value} kg x {edit_reps.value} reps"
             nueva_tarjeta.data["kilos"] = edit_kilos.value
             nueva_tarjeta.data["reps"] = edit_reps.value
             page.close(dlg_edit)
             page.update()
-        edit_kilos = ft.TextField(label="Kilos", value=val_kilos)
-        edit_reps = ft.TextField(label="Reps", value=val_reps)
-        dlg_edit = ft.AlertDialog(title=ft.Text("Editar"), content=ft.Column([edit_kilos, edit_reps], height=150), actions=[ft.TextButton("Guardar", on_click=guardar_edicion)])
+        
         def borrar_tarjeta(e):
             lista_series.controls.remove(nueva_tarjeta)
             page.update()
-        nueva_tarjeta = ft.Container(content=ft.Column([ft.Row([txt_titulo, ft.Row([ft.IconButton(ft.Icons.EDIT, ft.Colors.BLUE_GREY, on_click=lambda _: page.open(dlg_edit)), ft.IconButton(ft.Icons.DELETE_OUTLINE, ft.Colors.RED_400, on_click=borrar_tarjeta)], spacing=0)], alignment=ft.MainAxisAlignment.SPACE_BETWEEN), txt_datos, ft.Divider(height=10, color=ft.Colors.TRANSPARENT), ft.ResponsiveRow(controls=[btn_bien, btn_regular, btn_mal, btn_nulo], run_spacing=5)]), padding=15, border=ft.border.all(2, ft.Colors.BLACK), border_radius=10, bgcolor=ft.Colors.WHITE, data={"numero": mi_numero_serie, "ejercicio": val_ejercicio, "kilos": val_kilos, "reps": val_reps, "sensacion": "Sin calificar"})
+
+        dlg_edit = ft.AlertDialog(title=ft.Text("Editar"), content=ft.Column([edit_kilos, edit_reps], height=150), actions=[ft.TextButton("Guardar", on_click=guardar_edicion)])
+
+        for tarjeta in lista_series.controls:
+            tarjeta.border = ft.border.all(1, ft.Colors.GREY_200)
+            try:
+                tarjeta.content.controls[0].controls[0].color = ft.Colors.GREY_500
+                tarjeta.content.controls[0].controls[1].color = ft.Colors.GREY_500
+            except: pass
+
+        async def click_sensacion(e):
+            for btn in [btn_bien, btn_regular, btn_mal, btn_nulo]:
+                btn.bgcolor = ft.Colors.TRANSPARENT
+                btn.color = ft.Colors.BLACK
+            
+            sensacion = e.control.text
+            if sensacion == "Bien": 
+                e.control.bgcolor = ft.Colors.GREEN_400
+                e.control.color = ft.Colors.WHITE
+            elif sensacion == "Regular": 
+                e.control.bgcolor = ft.Colors.ORANGE_400
+                e.control.color = ft.Colors.WHITE
+            elif sensacion == "Mal": 
+                e.control.bgcolor = ft.Colors.RED_400
+                e.control.color = ft.Colors.WHITE
+            elif sensacion == "Nulo": 
+                e.control.bgcolor = ft.Colors.GREY_800
+                e.control.color = ft.Colors.WHITE
+            
+            nueva_tarjeta.data["sensacion"] = sensacion
+            page.update()
+            if mi_numero_serie == (numero_serie_global - 1): await resetear_cronometro()
+
+        estilo_btn = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=5), padding=5)
+        btn_bien = ft.ElevatedButton("Bien", on_click=click_sensacion, bgcolor=ft.Colors.GREEN_100, color=ft.Colors.BLACK, style=estilo_btn, expand=1)
+        btn_regular = ft.ElevatedButton("Regular", on_click=click_sensacion, bgcolor=ft.Colors.ORANGE_100, color=ft.Colors.BLACK, style=estilo_btn, expand=1)
+        btn_mal = ft.ElevatedButton("Mal", on_click=click_sensacion, bgcolor=ft.Colors.RED_100, color=ft.Colors.BLACK, style=estilo_btn, expand=1)
+        btn_nulo = ft.ElevatedButton("Nulo", icon=ft.Icons.FLAG, icon_color=ft.Colors.RED, on_click=click_sensacion, bgcolor=ft.Colors.GREY_200, color=ft.Colors.BLACK, style=estilo_btn, expand=1)
+
+        nueva_tarjeta = ft.Container(
+            content=ft.Column([
+                ft.Row([
+                    texto_info_serie,
+                    ft.Row([
+                        ft.IconButton(ft.Icons.EDIT, icon_color=ft.Colors.BLUE_GREY, icon_size=20, on_click=lambda _: page.open(dlg_edit)),
+                        ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=ft.Colors.RED_400, icon_size=20, on_click=borrar_tarjeta)
+                    ], spacing=0)
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                ft.Divider(height=5, color=ft.Colors.TRANSPARENT),
+                ft.Row([btn_bien, btn_regular, btn_mal, btn_nulo], spacing=5)
+            ]),
+            padding=10, 
+            border=ft.border.all(1, ft.Colors.BLACK), 
+            border_radius=10, 
+            bgcolor=ft.Colors.WHITE, 
+            data={"numero": mi_numero_serie, "ejercicio": val_ejercicio, "kilos": val_kilos, "reps": val_reps, "sensacion": "Sin calificar"}
+        )
+
         lista_series.controls.insert(0, nueva_tarjeta)
-        campo_kilos.value = ""
-        campo_reps.value = ""
         numero_serie_global += 1
         campo_kilos.focus()
         page.update()
-    btn_agregar = ft.ElevatedButton("Agregar", on_click=agregar_serie, bgcolor=ft.Colors.PRIMARY, color=ft.Colors.WHITE, height=50)
+
+    btn_agregar = ft.ElevatedButton("Agregar Serie", icon=ft.Icons.ADD, on_click=agregar_serie, bgcolor=ft.Colors.PRIMARY, color=ft.Colors.WHITE, height=45)
+    
     btn_finalizar_block = ft.ElevatedButton(text="FINALIZAR EJERCICIO", bgcolor=ft.Colors.BLACK, color=ft.Colors.WHITE, on_click=finalizar_entrenamiento, expand=True, height=50, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=5)))
     btn_cancelar_icon = ft.IconButton(icon=ft.Icons.DELETE_FOREVER, icon_color=ft.Colors.RED, icon_size=30, tooltip="Cancelar Entrenamiento", on_click=cancelar_entrenamiento)
+    
     fila_botones_footer = ft.Row(controls=[btn_cancelar_icon, btn_finalizar_block], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, spacing=10)
     seccion_footer = ft.Container(content=ft.Column(controls=[fila_cronometro, fila_botones_footer], spacing=10), bgcolor=ft.Colors.WHITE, padding=10, border=ft.border.only(top=ft.BorderSide(1, ft.Colors.GREY_300)))
-    header = ft.Container(padding=20, bgcolor=ft.Colors.WHITE, content=ft.Column(controls=[contenedor_setup_inicial, contenedor_resumen_activo, switch_crono, ft.Divider(), ft.Row([campo_kilos, campo_reps, btn_agregar], alignment=ft.MainAxisAlignment.SPACE_BETWEEN), ft.Divider(height=1, thickness=1)]))
+    
+    header = ft.Container(
+        padding=20,
+        bgcolor=ft.Colors.WHITE,
+        content=ft.Column(controls=[
+            contenedor_setup_inicial,
+            contenedor_resumen_activo,
+            switch_crono,
+            ft.Divider(height=5, thickness=1),
+            ft.Row([
+                input_kilos_group,
+                ft.Container(width=1, height=40, bgcolor=ft.Colors.GREY_300),
+                input_reps_group,
+                ft.Container(width=10), 
+                btn_agregar
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, scroll=ft.ScrollMode.HIDDEN),
+            ft.Divider(height=1, thickness=1),
+        ])
+    )
+
     vista_entrenar = ft.Column(controls=[header, lista_series, seccion_footer], expand=True, spacing=0)
 
     # --- PESTAÑA RÉCORDS ---
@@ -421,9 +545,11 @@ async def main(page: ft.Page):
                 next(reader, None)
                 for row in reader:
                     if len(row) >= 6:
+                        if len(row) < 6: continue # Protección
                         ejercicio, kilos, sensacion, fecha_str = row[2], float(row[3]), row[5], row[0]
-                        if sensacion == "Nulo": continue
-                        if ejercicio not in records_dict or kilos > records_dict[ejercicio]["kg"]: records_dict[ejercicio] = {"kg": kilos, "fecha": fecha_str}
+                        if sensacion.strip() == "Nulo": continue
+                        if ejercicio not in records_dict or kilos > records_dict[ejercicio]["kg"]:
+                            records_dict[ejercicio] = {"kg": kilos, "fecha": fecha_str}
             nuevas_filas = []
             hoy = datetime.date.today()
             for ej, data in records_dict.items():
@@ -436,22 +562,17 @@ async def main(page: ft.Page):
     actualizar_tabla_records()
     vista_records = ft.Container(content=ft.Column([ft.Text("Mis Récords Actuales", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK), ft.Divider(), ft.ElevatedButton("Ingresar Nuevo RM", on_click=lambda e: page.open(dlg_nuevo_rm), bgcolor=ft.Colors.PRIMARY, color=ft.Colors.WHITE), ft.Divider(color=ft.Colors.TRANSPARENT, height=20), ft.Column([tabla_records], scroll=ft.ScrollMode.AUTO, expand=True)], expand=True), padding=20, expand=True)
 
-    # --- PESTAÑA GRÁFICOS (SCATTER COMPACTO) ---
+    # --- PESTAÑA GRÁFICOS (SCATTER MEJORADO - COMPATIBLE) ---
     dropdown_filtro_grafico = ft.Dropdown(label="Selecciona Ejercicio", width=float('inf'), options=[ft.dropdown.Option("Todos")], value="Todos", on_change=lambda e: actualizar_grafico(e))
-    # Padding derecho 20 para que no se corte la fecha
-    chart_container = ft.Container(height=350, bgcolor=ft.Colors.WHITE, padding=ft.padding.only(top=10, left=10, right=20, bottom=20), border_radius=10, border=ft.border.all(1, ft.Colors.GREY_200))
+    chart_container = ft.Container(height=350, bgcolor=ft.Colors.WHITE, padding=ft.padding.only(top=10, left=10, right=10, bottom=20), border_radius=10, border=ft.border.all(1, ft.Colors.GREY_200))
     def cambiar_fecha_desde(e): txt_fecha_desde.value = dp_desde.value.strftime("%d-%m-%Y"); page.update()
     def cambiar_fecha_hasta(e): txt_fecha_hasta.value = dp_hasta.value.strftime("%d-%m-%Y"); page.update()
     dp_desde = ft.DatePicker(on_change=cambiar_fecha_desde); dp_hasta = ft.DatePicker(on_change=cambiar_fecha_hasta)
-    
-    # INPUTS COMPACTOS (height=35)
     txt_fecha_desde = ft.TextField(label="Desde", read_only=True, width=90, height=35, text_style=ft.TextStyle(size=12), content_padding=5)
     txt_fecha_hasta = ft.TextField(label="Hasta", read_only=True, width=90, height=35, text_style=ft.TextStyle(size=12), content_padding=5)
     btn_desde = ft.IconButton(ft.Icons.CALENDAR_MONTH, on_click=lambda _: page.open(dp_desde), icon_size=20)
     btn_hasta = ft.IconButton(ft.Icons.CALENDAR_MONTH, on_click=lambda _: page.open(dp_hasta), icon_size=20)
-    txt_peso_min = ft.TextField(label="Min", width=60, height=35, keyboard_type=ft.KeyboardType.NUMBER, text_style=ft.TextStyle(size=12), content_padding=5)
-    txt_peso_max = ft.TextField(label="Max", width=60, height=35, keyboard_type=ft.KeyboardType.NUMBER, text_style=ft.TextStyle(size=12), content_padding=5)
-    
+    txt_peso_min = ft.TextField(label="Min Kg", width=80, keyboard_type=ft.KeyboardType.NUMBER, text_style=ft.TextStyle(size=12)); txt_peso_max = ft.TextField(label="Max Kg", width=80, keyboard_type=ft.KeyboardType.NUMBER, text_style=ft.TextStyle(size=12))
     def aplicar_filtros_grafico(e):
         nonlocal filtro_fecha_desde, filtro_fecha_hasta, filtro_peso_min, filtro_peso_max
         try: filtro_fecha_desde = datetime.datetime.strptime(txt_fecha_desde.value, "%d-%m-%Y") if txt_fecha_desde.value else None
@@ -463,15 +584,31 @@ async def main(page: ft.Page):
         try: filtro_peso_max = float(txt_peso_max.value) if txt_peso_max.value else None
         except: filtro_peso_max = None
         actualizar_grafico(None)
+    
+    def limpiar_filtros_grafico(e):
+        nonlocal filtro_fecha_desde, filtro_fecha_hasta, filtro_peso_min, filtro_peso_max
+        filtro_fecha_desde = None
+        filtro_fecha_hasta = None
+        filtro_peso_min = None
+        filtro_peso_max = None
+        txt_fecha_desde.value = ""
+        txt_fecha_hasta.value = ""
+        txt_peso_min.value = ""
+        txt_peso_max.value = ""
+        actualizar_grafico(None)
 
-    # EXPANSION TILE PARA LIMPIEZA
     controles_filtro = ft.ExpansionTile(
         title=ft.Text("Configuración de Ejes", size=14, weight=ft.FontWeight.BOLD),
+        initially_expanded=False, 
         controls=[
             ft.Container(
                 content=ft.Column([
                     ft.Row([btn_desde, txt_fecha_desde, btn_hasta, txt_fecha_hasta], alignment=ft.MainAxisAlignment.CENTER),
-                    ft.Row([ft.Text("Kg:", size=12), txt_peso_min, txt_peso_max, ft.ElevatedButton("Aplicar", on_click=aplicar_filtros_grafico, bgcolor=ft.Colors.BLACK, color=ft.Colors.WHITE, height=35, width=80, style=ft.ButtonStyle(padding=0))], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
+                    ft.Row([
+                        ft.Text("Kg:", size=12), txt_peso_min, txt_peso_max, 
+                        ft.ElevatedButton("Aplicar", on_click=aplicar_filtros_grafico, bgcolor=ft.Colors.BLACK, color=ft.Colors.WHITE, height=35, width=80, style=ft.ButtonStyle(padding=0)),
+                        ft.IconButton(ft.Icons.DELETE_OUTLINE, tooltip="Limpiar Filtros", icon_color=ft.Colors.RED, on_click=limpiar_filtros_grafico)
+                    ], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
                 ], spacing=10),
                 padding=10
             )
@@ -502,7 +639,7 @@ async def main(page: ft.Page):
             chart_container.content = ft.Text("Sin datos", color=ft.Colors.GREY)
             if page: page.update()
             return
-        puntos_bien, puntos_regular, puntos_mal, puntos_nulo = [], [], [], []
+        puntos_bien, puntos_regular, puntos_mal, puntos_nulo, puntos_sin_calif = [], [], [], [], []
         max_historico = 0
         conteo_por_fecha = {}
         todos_timestamps = []
@@ -517,32 +654,39 @@ async def main(page: ft.Page):
                             peso = float(row[3])
                             fecha_str = row[0]
                             fecha_obj = datetime.datetime.strptime(fecha_str, "%d-%m-%Y")
-                            sensacion = row[5]
-                            if row[1] == "RM":
+                            sensacion = row[5].strip() # Strip vital
+
+                            # Calcular Max Historico GLOBALMENTE (incluso si no se dibuja)
+                            if sensacion != "Nulo":
                                 if peso > max_historico: max_historico = peso
-                                continue 
+
+                            if row[1] == "RM": continue # No dibujar RM manual
+                            
+                            # FILTROS
                             if filtro_fecha_desde and fecha_obj < filtro_fecha_desde: continue
                             if filtro_fecha_hasta and fecha_obj > filtro_fecha_hasta: continue
                             if filtro_peso_min is not None and peso < filtro_peso_min: continue
                             if filtro_peso_max is not None and peso > filtro_peso_max: continue
+
                             count = conteo_por_fecha.get(fecha_str, 0)
                             conteo_por_fecha[fecha_str] = count + 1
-                            timestamp_final = (fecha_obj.timestamp() * 1000) + (count * 300000)
-                            if sensacion != "Nulo" and peso > max_historico: max_historico = peso
+                            timestamp_final = (fecha_obj.timestamp() * 1000) + (count * 300000) # Jitter
+
                             todos_timestamps.append(timestamp_final)
                             point = ft.LineChartDataPoint(x=timestamp_final, y=peso, tooltip=f"{fecha_str}: {int(peso)}kg")
                             if sensacion == "Bien": puntos_bien.append(point)
                             elif sensacion == "Regular": puntos_regular.append(point)
                             elif sensacion == "Mal": puntos_mal.append(point)
                             elif sensacion == "Nulo": puntos_nulo.append(point)
+                            else: puntos_sin_calif.append(point)
                         except ValueError: pass
         except: pass
+
         if not todos_timestamps:
             chart_container.content = ft.Text("No hay datos para los filtros seleccionados", color=ft.Colors.GREY); page.update(); return
         todos_timestamps.sort()
         min_x = todos_timestamps[0] 
         max_x = todos_timestamps[-1]
-        # MARGEN DERECHO DEL 10% PARA QUE NO SE CORTE EL TEXTO
         margen_derecho = (max_x - min_x) * 0.10 if max_x != min_x else 100000
         max_x += margen_derecho
         series_chart = []
@@ -550,12 +694,14 @@ async def main(page: ft.Page):
         if puntos_regular: series_chart.append(ft.LineChartData(data_points=puntos_regular, color=ft.Colors.AMBER, stroke_width=0, point=True))
         if puntos_mal: series_chart.append(ft.LineChartData(data_points=puntos_mal, color=ft.Colors.RED, stroke_width=0, point=True))
         if puntos_nulo: series_chart.append(ft.LineChartData(data_points=puntos_nulo, color=ft.Colors.RED, stroke_width=0, point=True))
+        if puntos_sin_calif: series_chart.append(ft.LineChartData(data_points=puntos_sin_calif, color=ft.Colors.GREY, stroke_width=0, point=True))
+
         if max_historico > 0:
-            # LINEAS DE PORCENTAJE MAS OSCURAS
-            series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico), ft.LineChartDataPoint(x=max_x, y=max_historico, tooltip="100%")], color=ft.Colors.GREY_600, stroke_width=2, dash_pattern=[5, 5], point=False))
-            series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico*0.85), ft.LineChartDataPoint(x=max_x, y=max_historico*0.85, tooltip="85%")], color=ft.Colors.BLUE_GREY_200, stroke_width=1, dash_pattern=[4, 4], point=False))
-            series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico*0.70), ft.LineChartDataPoint(x=max_x, y=max_historico*0.70, tooltip="70%")], color=ft.Colors.BLUE_GREY_100, stroke_width=1, dash_pattern=[4, 4], point=False))
-            series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico*0.50), ft.LineChartDataPoint(x=max_x, y=max_historico*0.50, tooltip="50%")], color=ft.Colors.BLUE_GREY_50, stroke_width=1, dash_pattern=[4, 4], point=False))
+            # LINEAS DE PORCENTAJE (CORREGIDO: TOOLTIPS EN PUNTOS)
+            series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico), ft.LineChartDataPoint(x=max_x, y=max_historico, tooltip="100%")], color=ft.Colors.GREY_400, stroke_width=2, dash_pattern=[5, 5], point=False))
+            series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico*0.85), ft.LineChartDataPoint(x=max_x, y=max_historico*0.85, tooltip="85%")], color=ft.Colors.GREY_300, stroke_width=1, dash_pattern=[2, 2], point=False))
+            series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico*0.70), ft.LineChartDataPoint(x=max_x, y=max_historico*0.70, tooltip="70%")], color=ft.Colors.GREY_300, stroke_width=1, dash_pattern=[2, 2], point=False))
+            series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico*0.50), ft.LineChartDataPoint(x=max_x, y=max_historico*0.50, tooltip="50%")], color=ft.Colors.GREY_200, stroke_width=1, dash_pattern=[2, 2], point=False))
         num_labels = 8
         intervalo = (max_x - min_x) / (num_labels - 1) if num_labels > 1 and max_x != min_x else 0
         labels_x = []
@@ -567,7 +713,7 @@ async def main(page: ft.Page):
         chart_container.content = chart
         if page: page.update()
     actualizar_grafico(None)
-    vista_graficos = ft.Column([ft.Container(content=ft.Column([ft.Text("Progreso de Cargas", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK), dropdown_filtro_grafico, ft.Divider(), chart_container, ft.Row([ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.GREEN, size=12), ft.Text("Bien", size=12), ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.AMBER, size=12), ft.Text("Reg", size=12), ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.RED, size=12), ft.Text("Mal/Nulo", size=12)], alignment=ft.MainAxisAlignment.CENTER), ft.Text("* La línea punteada indica tu Máximo Histórico actual", size=11, color=ft.Colors.GREY_600, italic=True)], expand=True), padding=20, expand=True), ft.Divider(thickness=10, color=ft.Colors.GREY_100), controles_filtro], expand=True, spacing=0)
+    vista_graficos = ft.Column([ft.Container(content=ft.Column([ft.Text("Progreso de Cargas", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK), dropdown_filtro_grafico, ft.Divider(), chart_container, ft.Row([ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.GREEN, size=12), ft.Text("Bien", size=12), ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.AMBER, size=12), ft.Text("Reg", size=12), ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.RED, size=12), ft.Text("Mal/Nulo", size=12)], alignment=ft.MainAxisAlignment.CENTER), ft.Text("* Las líneas indican: Máximo Histórico, 85%, 70% y 50% del RM", size=11, color=ft.Colors.GREY_600, italic=True)], expand=True), padding=20, expand=True), ft.Divider(thickness=10, color=ft.Colors.GREY_100), ft.Container(content=controles_filtro, padding=20, bgcolor=ft.Colors.GREY_50)], expand=True, spacing=0)
 
     # --- 4. PESTAÑA HISTORIAL ---
     dropdown_filtro_historial = ft.Dropdown(label="Filtrar por ejercicio", width=float('inf'), options=[ft.dropdown.Option("Todos")], value="Todos", on_change=lambda e: actualizar_historial(e), content_padding=10)
@@ -586,7 +732,10 @@ async def main(page: ft.Page):
             reader = csv.reader(file)
             filas_totales = list(reader)
             for i in range(1, len(filas_totales)):
-                if filas_totales[i][0] == detalle_fecha_actual and filas_totales[i][2] == detalle_ejercicio_actual: filas_coincidentes.append({'data': filas_totales[i], 'index_csv': i})
+                if len(filas_totales[i]) < 6: continue # PROTECCION INDEX
+                if filas_totales[i][0] == detalle_fecha_actual and filas_totales[i][2] == detalle_ejercicio_actual:
+                    filas_coincidentes.append({'data': filas_totales[i], 'index_csv': i})
+        
         contenido_detalle.controls.clear()
         contenido_detalle.controls.append(ft.Text(detalle_ejercicio_actual, weight=ft.FontWeight.BOLD, size=16, color=ft.Colors.BLACK))
         contenido_detalle.controls.append(ft.Divider())
@@ -674,18 +823,43 @@ async def main(page: ft.Page):
                 if seleccion_actual in [op.key for op in nuevas_opciones]: dropdown_filtro_historial.value = seleccion_actual
                 else: dropdown_filtro_historial.value = "Todos"
                 filtro = dropdown_filtro_historial.value
-                for i in range(len(filas_totales)-1, 0, -1):
+                
+                # --- CAMBIO DE ORDEN DE LECTURA (DESCENDENTE) ---
+                # Convertimos las filas a objetos para poder ordenar por fecha real
+                filas_procesadas = []
+                for i in range(1, len(filas_totales)):
                     row = filas_totales[i]
                     if len(row) >= 6:
-                        if row[1] == "RM": continue
-                        nombre_ejercicio = row[2]
-                        if filtro == "Todos" or filtro == nombre_ejercicio:
-                            fecha = row[0]
-                            if fecha not in datos_agrupados: datos_agrupados[fecha] = {} 
-                            if nombre_ejercicio not in datos_agrupados[fecha]: datos_agrupados[fecha][nombre_ejercicio] = []
-                            datos_agrupados[fecha][nombre_ejercicio].append({'data': row, 'index_csv': i})
+                        try:
+                            # Agregamos la fecha como objeto datetime para ordenar
+                            fecha_obj = datetime.datetime.strptime(row[0], "%d-%m-%Y")
+                            filas_procesadas.append({
+                                'row': row,
+                                'date_obj': fecha_obj,
+                                'index_csv': i
+                            })
+                        except: pass
+                
+                # Ordenamos de MAS RECIENTE a MAS ANTIGUO
+                filas_procesadas.sort(key=lambda x: x['date_obj'], reverse=True)
+                
+                # Ahora iteramos sobre la lista ordenada
+                for item in filas_procesadas:
+                    row = item['row']
+                    idx = item['index_csv']
+                    
+                    if row[1] == "RM": continue
+
+                    nombre_ejercicio = row[2]
+                    if filtro == "Todos" or filtro == nombre_ejercicio:
+                        fecha = row[0]
+                        if fecha not in datos_agrupados: datos_agrupados[fecha] = {} 
+                        if nombre_ejercicio not in datos_agrupados[fecha]: datos_agrupados[fecha][nombre_ejercicio] = []
+                        datos_agrupados[fecha][nombre_ejercicio].append({'data': row, 'index_csv': idx})
+
             columna_historial.controls.clear()
             if not datos_agrupados: columna_historial.controls.append(ft.Text("No se encontraron registros.", color=ft.Colors.GREY))
+            # El diccionario datos_agrupados ya se insertó en orden cronologico descendente
             for fecha, ejercicios_dict in datos_agrupados.items():
                 header_fecha = ft.Container(content=ft.Text(f"📅 {fecha}", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK87), bgcolor=ft.Colors.GREY_200, padding=10, border_radius=5, alignment=ft.alignment.center_left)
                 filas_resumen = []
