@@ -7,7 +7,7 @@ import os
 # --- LISTA MAESTRA ---
 EJERCICIOS_BASE = [
     ("Olímpico - Competencia", "Snatch (Arrancada)"),
-    ("Olímpico - Competencia", "Clean & Jerk (Cargada y Envión)"),
+    ("Olímpico - Competencia", "Clean & Jerk (Envión)"),
     ("Variantes Snatch", "Power Snatch (Arrancada de Potencia)"),
     ("Variantes Snatch", "Hang Snatch (Arrancada Colgante)"),
     ("Variantes Snatch", "Block Snatch (Arrancada sobre Soportes)"),
@@ -87,31 +87,19 @@ def leer_ejercicios():
     return ejercicios_dict
 
 async def main(page: ft.Page):
-    # ==========================================
-    #   CONFIGURACIÓN DE TEMA (SKIN)
-    # ==========================================
+    # --- CONFIGURACIÓN GENERAL ---
     page.title = "Haltero Tracker"
     page.padding = 0 
     page.scroll = None 
-    
-    # Elige tu tema aquí:
-    # color_scheme_seed determina el color principal de toda la app
-    page.theme = ft.Theme(
-        color_scheme_seed=ft.Colors.BLUE, # Prueba: RED, TEAL, ORANGE, INDIGO
-        use_material3=True
-    )
-    # Modo Claro (LIGHT) o Oscuro (DARK)
+    page.theme = ft.Theme(color_scheme_seed=ft.Colors.BLUE, use_material3=True)
     page.theme_mode = ft.ThemeMode.LIGHT 
     page.bgcolor = ft.Colors.WHITE
 
-    # ==========================================
-    #   INICIALIZACIÓN DE DATOS
-    # ==========================================
     inicializar_maestro_ejercicios()
     DB_EJERCICIOS = leer_ejercicios()
     lista_categorias = list(DB_EJERCICIOS.keys())
 
-    # Variables Globales
+    # --- VARIABLES GLOBALES ---
     segundos = 0
     contando = False
     numero_serie_global = 1 
@@ -123,14 +111,12 @@ async def main(page: ft.Page):
     categoria_a_editar_original = ""
 
     # ==========================================
-    #   DEFINICIÓN DE VISTAS (UI)
+    #   VISTA INICIO (Definida primero, sin botón aún)
     # ==========================================
-
-    # --- 1. VISTA INICIO (DEFINIDA PRIMERO PARA EVITAR ERRORES) ---
     vista_inicio = ft.Container(
         content=ft.Column(
             controls=[
-                ft.Icon(ft.Icons.FITNESS_CENTER, size=120, color=ft.Colors.BLACK),
+                ft.Icon(ft.Icons.FITNESS_CENTER, size=100, color=ft.Colors.BLACK),
                 ft.Text("Haltero Tracker", size=32, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
@@ -142,62 +128,44 @@ async def main(page: ft.Page):
         bgcolor=ft.Colors.WHITE
     )
 
-    # --- 2. COMPONENTES DE ENTRENAMIENTO ---
+    # ==========================================
+    #   PESTAÑA 1: ENTRENAMIENTO
+    # ==========================================
+    
+    # 1. Calendario y Fecha
     def cambiar_fecha(e):
         campo_fecha_texto.value = date_picker.value.strftime("%d-%m-%Y")
         page.update()
 
-    date_picker = ft.DatePicker(
-        on_change=cambiar_fecha,
-        first_date=datetime.datetime(2023, 1, 1),
-        last_date=datetime.datetime(2030, 12, 31),
-    )
-    
-    btn_calendario = ft.IconButton(
-        icon=ft.Icons.CALENDAR_MONTH, 
-        icon_color=ft.Colors.PRIMARY, # Usa el color del tema
-        on_click=lambda _: page.open(date_picker)
-    )
+    date_picker = ft.DatePicker(on_change=cambiar_fecha)
+    btn_calendario = ft.IconButton(icon=ft.Icons.CALENDAR_MONTH, icon_color=ft.Colors.PRIMARY, on_click=lambda _: page.open(date_picker))
+    campo_fecha_texto = ft.TextField(value=fecha_hoy_txt, width=120, read_only=True, text_align=ft.TextAlign.CENTER, border=ft.InputBorder.NONE, text_style=ft.TextStyle(weight=ft.FontWeight.BOLD))
 
-    campo_fecha_texto = ft.TextField(
-        value=fecha_hoy_txt, width=120, read_only=True, 
-        text_align=ft.TextAlign.CENTER, border=ft.InputBorder.NONE, 
-        text_style=ft.TextStyle(weight=ft.FontWeight.BOLD)
-    )
-
-    texto_cronometro = ft.Text(value="00:00", size=40, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE)
-
+    # 2. Cronómetro
+    texto_cronometro = ft.Text(value="00:00", size=30, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE)
     contenedor_cronometro_ui = ft.Container(
         content=ft.Row([ft.Icon(ft.Icons.TIMER, color=ft.Colors.WHITE), texto_cronometro], alignment=ft.MainAxisAlignment.CENTER),
         bgcolor=ft.Colors.BLUE_GREY_900, padding=10, border_radius=10, margin=ft.margin.only(bottom=10)
     )
-    
     fila_cronometro = ft.Row(controls=[contenedor_cronometro_ui], alignment=ft.MainAxisAlignment.CENTER, visible=False)
 
     def cambiar_estado_crono(e):
-        nonlocal contando
+        nonlocal contando, segundos
         contando = switch_crono.value
         fila_cronometro.visible = switch_crono.value
+        if not switch_crono.value:
+            segundos = 0
+            texto_cronometro.value = "00:00"
         page.update()
 
     switch_crono = ft.Switch(label="Activar Cronómetro", value=False, on_change=cambiar_estado_crono)
 
-    async def resetear_cronometro():
-        nonlocal segundos
-        if switch_crono.value:
-            segundos = 0
-            texto_cronometro.value = "00:00"
-            texto_cronometro.color = ft.Colors.GREEN_400
-            page.update()
-            await asyncio.sleep(0.5)
-            texto_cronometro.color = ft.Colors.WHITE
-            page.update()
-
+    # 3. Lista y Controles
     lista_series = ft.ListView(expand=True, spacing=10, padding=20)
     campo_kilos = ft.TextField(label="Kilos", width=100, keyboard_type=ft.KeyboardType.NUMBER, border_color=ft.Colors.PRIMARY)
     campo_reps = ft.TextField(label="Reps", width=100, keyboard_type=ft.KeyboardType.NUMBER, border_color=ft.Colors.PRIMARY)
     
-    dd_ejercicio = ft.Dropdown(label="Ejercicio", width=None, disabled=True, options=[])
+    dd_ejercicio = ft.Dropdown(label="Ejercicio", width=float('inf'), disabled=True, options=[])
 
     def cambio_categoria(e):
         cat_selec = dd_categoria.value
@@ -208,55 +176,76 @@ async def main(page: ft.Page):
             dd_ejercicio.disabled = False
         page.update()
 
-    dd_categoria = ft.Dropdown(
-        label="Categoría", width=None, 
-        options=[ft.dropdown.Option(c) for c in lista_categorias],
-        on_change=cambio_categoria
+    dd_categoria = ft.Dropdown(label="Categoría", width=float('inf'), options=[ft.dropdown.Option(c) for c in lista_categorias], on_change=cambio_categoria)
+    
+    contenedor_setup_inicial = ft.Column(
+        controls=[
+            ft.Row([ft.Text("Fecha:", weight=ft.FontWeight.BOLD, size=16), btn_calendario, campo_fecha_texto], vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            dd_categoria,
+            dd_ejercicio
+        ],
+        spacing=10, visible=True
     )
     
-    columna_selectores = ft.Column(controls=[dd_categoria, dd_ejercicio], spacing=10)
+    texto_resumen_activo = ft.Text("", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_GREY_800)
+    contenedor_resumen_activo = ft.Container(
+        content=ft.Row([ft.Icon(ft.Icons.FITNESS_CENTER_OUTLINED, size=20), texto_resumen_activo], alignment=ft.MainAxisAlignment.CENTER),
+        padding=10, bgcolor=ft.Colors.BLUE_50, border_radius=5, visible=False
+    )
 
-    # --- Lógica de Botones y Guardado ---
+    def resetear_interfaz_entrenamiento():
+        nonlocal numero_serie_global, segundos
+        lista_series.controls.clear()
+        numero_serie_global = 1
+        segundos = 0
+        texto_cronometro.value = "00:00"
+        switch_crono.value = False
+        fila_cronometro.visible = False
+        campo_kilos.value = ""
+        campo_reps.value = ""
+        contenedor_setup_inicial.visible = True
+        contenedor_resumen_activo.visible = False
+        dd_categoria.value = None
+        dd_categoria.disabled = False
+        dd_ejercicio.value = None
+        dd_ejercicio.disabled = True
+        dd_ejercicio.options = []
+
     def finalizar_entrenamiento(e):
         if len(lista_series.controls) == 0:
             page.snack_bar = ft.SnackBar(ft.Text("No hay series para guardar"))
             page.snack_bar.open = True
             page.update()
             return
-
         nombre_archivo = "historial_entrenamientos.csv"
         archivo_existe = os.path.isfile(nombre_archivo)
-        fecha_registrada = campo_fecha_texto.value
-
         with open(nombre_archivo, mode='a', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
-            if not archivo_existe:
-                writer.writerow(["Fecha", "N_Serie", "Ejercicio", "Kilos", "Reps", "Sensacion"])
-            
+            if not archivo_existe: writer.writerow(["Fecha", "N_Serie", "Ejercicio", "Kilos", "Reps", "Sensacion"])
             for tarjeta in reversed(lista_series.controls):
                 datos = tarjeta.data
-                writer.writerow([fecha_registrada, datos["numero"], datos["ejercicio"], datos["kilos"], datos["reps"], datos["sensacion"]])
-
-        page.snack_bar = ft.SnackBar(ft.Text(f"¡Ejercicio guardado exitosamente!"), bgcolor=ft.Colors.GREEN)
+                writer.writerow([campo_fecha_texto.value, datos["numero"], datos["ejercicio"], datos["kilos"], datos["reps"], datos["sensacion"]])
+        page.snack_bar = ft.SnackBar(ft.Text(f"¡Entrenamiento Guardado!"), bgcolor=ft.Colors.GREEN)
         page.snack_bar.open = True
-        
-        lista_series.controls.clear()
-        nonlocal numero_serie_global
-        numero_serie_global = 1
-        dd_categoria.disabled = False
-        dd_ejercicio.disabled = False
-        
+        resetear_interfaz_entrenamiento()
         actualizar_historial(None)
         actualizar_tabla_records() 
+        page.update()
+
+    def cancelar_entrenamiento(e):
+        resetear_interfaz_entrenamiento()
+        page.snack_bar = ft.SnackBar(ft.Text("Cancelado"), bgcolor=ft.Colors.RED)
+        page.snack_bar.open = True
         page.update()
 
     def agregar_serie(e):
         nonlocal numero_serie_global
         if not campo_kilos.value or not campo_reps.value or not dd_ejercicio.value: return 
         
-        if not dd_ejercicio.disabled:
-            dd_categoria.disabled = True
-            dd_ejercicio.disabled = True
+        if contenedor_setup_inicial.visible:
+            contenedor_setup_inicial.visible = False
+            contenedor_resumen_activo.visible = True
+            texto_resumen_activo.value = f"{dd_ejercicio.value}"
             page.update()
 
         for tarjeta in lista_series.controls:
@@ -273,7 +262,7 @@ async def main(page: ft.Page):
         val_reps = campo_reps.value
         val_ejercicio = dd_ejercicio.value 
         
-        txt_titulo = ft.Text(f"Serie #{mi_numero_serie}: {val_ejercicio}", weight=ft.FontWeight.BOLD, size=14, color=ft.Colors.BLACK)
+        txt_titulo = ft.Text(f"Serie #{mi_numero_serie}", weight=ft.FontWeight.BOLD, size=14, color=ft.Colors.BLACK)
         txt_datos = ft.Text(f"{val_kilos} kg  x  {val_reps} reps", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)
 
         async def click_sensacion(e):
@@ -283,7 +272,6 @@ async def main(page: ft.Page):
             btn_nulo.bgcolor = ft.Colors.GREY_200 
             btn_nulo.color = ft.Colors.BLACK
             btn_nulo.icon_color = ft.Colors.RED
-            
             sensacion = e.control.text
             if sensacion == "Bien": e.control.bgcolor = ft.Colors.GREEN_400
             elif sensacion == "Regular": e.control.bgcolor = ft.Colors.ORANGE_400
@@ -291,15 +279,11 @@ async def main(page: ft.Page):
             elif sensacion == "Nulo": 
                 e.control.bgcolor = ft.Colors.GREY_800
                 e.control.color = ft.Colors.WHITE
-            
             nueva_tarjeta.data["sensacion"] = sensacion
             page.update()
-            
-            if mi_numero_serie == (numero_serie_global - 1):
-                await resetear_cronometro()
+            if mi_numero_serie == (numero_serie_global - 1): await resetear_cronometro()
 
         estilo_btn = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=5), padding=5)
-
         btn_bien = ft.ElevatedButton("Bien", on_click=click_sensacion, bgcolor=ft.Colors.GREEN_100, color=ft.Colors.BLACK, style=estilo_btn, col={"xs": 6, "sm": 3})
         btn_regular = ft.ElevatedButton("Regular", on_click=click_sensacion, bgcolor=ft.Colors.ORANGE_100, color=ft.Colors.BLACK, style=estilo_btn, col={"xs": 6, "sm": 3})
         btn_mal = ft.ElevatedButton("Mal", on_click=click_sensacion, bgcolor=ft.Colors.RED_100, color=ft.Colors.BLACK, style=estilo_btn, col={"xs": 6, "sm": 3})
@@ -341,14 +325,26 @@ async def main(page: ft.Page):
     btn_agregar = ft.ElevatedButton("Agregar", on_click=agregar_serie, bgcolor=ft.Colors.PRIMARY, color=ft.Colors.WHITE, height=50)
 
     btn_finalizar_block = ft.ElevatedButton(
-        text="FINALIZAR EJERCICIO", bgcolor=ft.Colors.BLACK, color=ft.Colors.WHITE,
-        on_click=finalizar_entrenamiento, width=1000, height=50,
-        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=0)) 
+        text="FINALIZAR", bgcolor=ft.Colors.BLACK, color=ft.Colors.WHITE,
+        on_click=finalizar_entrenamiento, expand=True, height=50,
+        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=5)) 
+    )
+    
+    btn_cancelar_icon = ft.IconButton(
+        icon=ft.Icons.DELETE_FOREVER, icon_color=ft.Colors.RED, icon_size=30,
+        tooltip="Cancelar Entrenamiento", on_click=cancelar_entrenamiento
     )
 
     seccion_footer = ft.Container(
-        content=ft.Column(controls=[fila_cronometro, btn_finalizar_block], spacing=0),
+        content=ft.Column(
+            controls=[
+                fila_cronometro, 
+                ft.Row(controls=[btn_cancelar_icon, btn_finalizar_block], spacing=10)
+            ], 
+            spacing=10
+        ),
         bgcolor=ft.Colors.WHITE, 
+        padding=10,
         border=ft.border.only(top=ft.BorderSide(1, ft.Colors.GREY_300))
     )
 
@@ -356,8 +352,8 @@ async def main(page: ft.Page):
         padding=20,
         bgcolor=ft.Colors.WHITE,
         content=ft.Column(controls=[
-            ft.Row([ft.Text("Fecha:", weight=ft.FontWeight.BOLD, size=16), btn_calendario, campo_fecha_texto], vertical_alignment=ft.CrossAxisAlignment.CENTER),
-            columna_selectores, 
+            contenedor_setup_inicial,
+            contenedor_resumen_activo,
             switch_crono,
             ft.Divider(),
             ft.Row([campo_kilos, campo_reps, btn_agregar], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
@@ -365,24 +361,24 @@ async def main(page: ft.Page):
         ])
     )
 
-    vista_entrenar = ft.Column(controls=[header, lista_series, seccion_footer], expand=True, spacing=0)
+    vista_entrenar = ft.Column(
+        controls=[header, lista_series, seccion_footer],
+        expand=True, spacing=0
+    )
 
-    # --- 3. PESTAÑA RÉCORDS ---
+    # ==========================================
+    #   PESTAÑA 2: RÉCORDS
+    # ==========================================
+    
     def cambiar_fecha_rm(e):
         campo_fecha_rm.value = date_picker_rm.value.strftime("%d-%m-%Y")
         page.update()
 
-    date_picker_rm = ft.DatePicker(
-        on_change=cambiar_fecha_rm,
-        first_date=datetime.datetime(2020, 1, 1), 
-        last_date=datetime.datetime(2030, 12, 31),
-    )
-    
+    date_picker_rm = ft.DatePicker(on_change=cambiar_fecha_rm)
     campo_fecha_rm = ft.TextField(value=fecha_hoy_txt, width=120, read_only=True, label="Fecha RM", text_style=ft.TextStyle(size=14))
     btn_calendario_rm = ft.IconButton(icon=ft.Icons.CALENDAR_MONTH, icon_color=ft.Colors.PRIMARY, on_click=lambda _: page.open(date_picker_rm))
     
-    rm_dd_ejercicio = ft.Dropdown(label="Ejercicio", width=None, disabled=True)
-    
+    rm_dd_ejercicio = ft.Dropdown(label="Ejercicio", width=float('inf'), disabled=True)
     def rm_cambio_categoria(e):
         cat_selec = rm_dd_categoria.value
         if cat_selec in DB_EJERCICIOS:
@@ -391,13 +387,7 @@ async def main(page: ft.Page):
             rm_dd_ejercicio.value = opciones[0].key 
             rm_dd_ejercicio.disabled = False
         page.update()
-
-    rm_dd_categoria = ft.Dropdown(
-        label="Categoría", width=None, 
-        options=[ft.dropdown.Option(c) for c in lista_categorias],
-        on_change=rm_cambio_categoria
-    )
-
+    rm_dd_categoria = ft.Dropdown(label="Categoría", width=float('inf'), options=[ft.dropdown.Option(c) for c in lista_categorias], on_change=rm_cambio_categoria)
     rm_campo_kilos = ft.TextField(label="Max Kg", width=100, keyboard_type=ft.KeyboardType.NUMBER)
 
     def guardar_rm_manual(e):
@@ -468,7 +458,7 @@ async def main(page: ft.Page):
     )
 
     # --- 4. PESTAÑA HISTORIAL ---
-    dropdown_filtro_historial = ft.Dropdown(label="Filtrar por ejercicio", options=[ft.dropdown.Option("Todos")], value="Todos", on_change=lambda e: actualizar_historial(e), content_padding=10)
+    dropdown_filtro_historial = ft.Dropdown(label="Filtrar por ejercicio", width=float('inf'), options=[ft.dropdown.Option("Todos")], value="Todos", on_change=lambda e: actualizar_historial(e), content_padding=10)
     columna_historial = ft.ListView(expand=True, spacing=15, padding=20)
 
     hist_edit_kilos = ft.TextField(label="Kilos")
@@ -505,8 +495,7 @@ async def main(page: ft.Page):
             sensacion_txt = row[5]
             color_sens = ft.Colors.GREEN_700 if sensacion_txt == "Bien" else ft.Colors.AMBER_700 if sensacion_txt == "Regular" else ft.Colors.RED_700
             filas_tabla_detalle.append(ft.DataRow(cells=[ft.DataCell(ft.Container(content=ft.Text(row[3], color=ft.Colors.BLACK), alignment=ft.alignment.center)), ft.DataCell(ft.Container(content=ft.Text(row[4], color=ft.Colors.BLACK), alignment=ft.alignment.center)), ft.DataCell(ft.Container(content=ft.Text(sensacion_txt, color=color_sens), alignment=ft.alignment.center))], on_select_changed=abrir_edicion_historial, data={'index_csv': item['index_csv'], 'kilos': row[3], 'reps': row[4], 'sens': sensacion_txt}))
-        
-        contenido_detalle.controls.append(ft.DataTable(columns=[ft.DataColumn(ft.Text("Kg", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)), ft.DataColumn(ft.Text("Reps", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)), ft.DataColumn(ft.Text("Sens.", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK))], rows=filas_tabla_detalle, column_spacing=20, width=float('inf'), show_checkbox_column=False))
+        contenido_detalle.controls.append(ft.DataTable(columns=[ft.DataColumn(ft.Text("Kg", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)), ft.DataColumn(ft.Text("Reps", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)), ft.DataColumn(ft.Text("Sens.", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK))], rows=filas_tabla_detalle, column_spacing=20, width=float('inf'), show_checkbox_column=False, heading_row_color=ft.Colors.GREY_100))
         page.update()
 
     def guardar_cambios_historial(e):
@@ -548,7 +537,7 @@ async def main(page: ft.Page):
     dlg_historial_opciones = ft.AlertDialog(
         title=ft.Text("Editar Serie"),
         content=ft.Column([ft.Text("Modifica o elimina esta serie:", size=12, color=ft.Colors.GREY), hist_edit_kilos, hist_edit_reps, hist_edit_sens], height=250, width=300),
-        actions=[ft.TextButton("Cancelar", on_click=lambda e: page.close(dlg_historial_opciones)), ft.TextButton("Eliminar", on_click=eliminar_registro_historial, style=ft.ButtonStyle(color=ft.Colors.RED)), ft.ElevatedButton("Guardar", on_click=guardar_cambios_historial, bgcolor=ft.Colors.BLUE, color=ft.Colors.WHITE)]
+        actions=[ft.TextButton("Cancelar", on_click=lambda e: page.close(dlg_historial_opciones)), ft.TextButton("Eliminar", on_click=eliminar_registro_historial, style=ft.ButtonStyle(color=ft.Colors.RED)), ft.ElevatedButton("Guardar", on_click=guardar_cambios_historial, bgcolor=ft.Colors.BLUE, color=ft.Colors.WHITE)], actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN
     )
 
     def abrir_edicion_historial(e):
@@ -632,7 +621,17 @@ async def main(page: ft.Page):
 
     actualizar_historial(None)
 
-    vista_historial = ft.Container(content=ft.Column(controls=[ft.Text("Historial de Entrenamientos", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK), ft.Text("Toca un ejercicio para ver el detalle de las series", size=12, color=ft.Colors.GREY), dropdown_filtro_historial, ft.Divider(), columna_historial], expand=True), padding=10, expand=True)
+    vista_historial = ft.Container(
+        content=ft.Column(
+            controls=[
+                ft.Text("Historial de Entrenamientos", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
+                ft.Text("Toca un ejercicio para ver el detalle de las series", size=12, color=ft.Colors.GREY),
+                dropdown_filtro_historial,
+                ft.Divider(),
+                columna_historial
+            ], expand=True),
+        padding=10, expand=True
+    )
 
     # --- 5. PESTAÑA EJERCICIOS ---
     lista_gestion_ejercicios = ft.ListView(expand=True, spacing=10)
@@ -727,18 +726,23 @@ async def main(page: ft.Page):
 
     vista_ejercicios = ft.Container(content=ft.Column([ft.Text("Gestión de Ejercicios", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK), ft.ElevatedButton("Nuevo Ejercicio", icon=ft.Icons.ADD, on_click=lambda e: page.open(dlg_nuevo_ejercicio), bgcolor=ft.Colors.BLACK, color=ft.Colors.WHITE), ft.Divider(), lista_gestion_ejercicios], expand=True), padding=20, expand=True)
 
-    # --- MAIN TABS ---
+    # --- MAIN TABS + SAFEAREA ---
     tab_inicio = ft.Tab(text="Inicio", icon=ft.Icons.HOME, content=vista_inicio)
     mis_tabs = ft.Tabs(selected_index=0, animation_duration=300, tab_alignment=ft.TabAlignment.CENTER, tabs=[tab_inicio, ft.Tab(text="Entrenar", icon=ft.Icons.FITNESS_CENTER, content=vista_entrenar), ft.Tab(text="Récords", icon=ft.Icons.EMOJI_EVENTS, content=vista_records), ft.Tab(text="Historial", icon=ft.Icons.HISTORY, content=vista_historial), ft.Tab(text="Ejercicios", icon=ft.Icons.LIST, content=vista_ejercicios)], expand=True)
 
+    # Función para iniciar la app ocultando la vista de inicio
     def iniciar_app(e):
-        mis_tabs.tabs.pop(0) 
-        mis_tabs.selected_index = 0 
+        # 1. Quitar la pestaña de inicio de la lista
+        mis_tabs.tabs.pop(0)
+        # 2. Seleccionar la nueva primera pestaña (Entrenar)
+        mis_tabs.selected_index = 0
+        # 3. Actualizar
         page.update()
 
+    # Inyectar el botón en la vista de inicio
     vista_inicio.content.controls.append(ft.ElevatedButton("Comenzar", on_click=iniciar_app, bgcolor=ft.Colors.PRIMARY, color=ft.Colors.WHITE))
 
-    page.add(mis_tabs)
+    page.add(ft.SafeArea(mis_tabs)) 
 
     while True:
         if switch_crono.value:
@@ -749,7 +753,5 @@ async def main(page: ft.Page):
             segundos += 1
         else:
             await asyncio.sleep(0.1)
-
-# --- AL FINAL DEL ARCHIVO ---
 
 ft.app(target=main)
