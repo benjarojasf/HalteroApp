@@ -375,36 +375,29 @@ async def main(page: ft.Page):
             contenedor_resumen_activo.visible = True
             texto_resumen_activo.value = f"{dd_ejercicio.value}"
             page.update()
-
         mi_numero_serie = numero_serie_global
         val_kilos = campo_kilos.value
         val_reps = campo_reps.value
         val_ejercicio = dd_ejercicio.value 
         edit_kilos = ft.TextField(label="Kilos", value=val_kilos)
         edit_reps = ft.TextField(label="Reps", value=val_reps)
-        
         texto_info_serie = ft.Text(f"{val_kilos} kg x {val_reps} reps", weight=ft.FontWeight.BOLD, size=16, color=ft.Colors.BLACK, expand=True, text_align=ft.TextAlign.CENTER)
-
         def guardar_edicion(e):
             texto_info_serie.value = f"{edit_kilos.value} kg x {edit_reps.value} reps"
             nueva_tarjeta.data["kilos"] = edit_kilos.value
             nueva_tarjeta.data["reps"] = edit_reps.value
             page.close(dlg_edit)
             page.update()
-        
         def borrar_tarjeta(e):
             lista_series.controls.remove(nueva_tarjeta)
             page.update()
-
         dlg_edit = ft.AlertDialog(title=ft.Text("Editar"), content=ft.Column([edit_kilos, edit_reps], height=150), actions=[ft.TextButton("Guardar", on_click=guardar_edicion)])
-
         for tarjeta in lista_series.controls:
             tarjeta.border = ft.border.all(1, ft.Colors.GREY_200)
             try:
-                tarjeta.content.controls[0].controls[0].color = ft.Colors.GREY_500
-                tarjeta.content.controls[0].controls[1].content.color = ft.Colors.GREY_500
+                tarjeta.content.controls[0].controls[0].color = ft.Colors.GREY_500 # Titulo Serie
+                tarjeta.content.controls[0].controls[1].content.color = ft.Colors.GREY_500 # Texto Datos
             except: pass
-
         async def click_sensacion(e):
             for btn in [btn_bien, btn_regular, btn_mal, btn_nulo]:
                 btn.bgcolor = ft.Colors.TRANSPARENT; btn.color = ft.Colors.BLACK
@@ -416,13 +409,11 @@ async def main(page: ft.Page):
             nueva_tarjeta.data["sensacion"] = sensacion
             page.update()
             if mi_numero_serie == (numero_serie_global - 1): await resetear_cronometro()
-
         estilo_btn = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=5), padding=5)
         btn_bien = ft.ElevatedButton("Bien", on_click=click_sensacion, bgcolor=ft.Colors.GREEN_100, color=ft.Colors.BLACK, style=estilo_btn, expand=1)
         btn_regular = ft.ElevatedButton("Regular", on_click=click_sensacion, bgcolor=ft.Colors.ORANGE_100, color=ft.Colors.BLACK, style=estilo_btn, expand=1)
         btn_mal = ft.ElevatedButton("Mal", on_click=click_sensacion, bgcolor=ft.Colors.RED_100, color=ft.Colors.BLACK, style=estilo_btn, expand=1)
         btn_nulo = ft.ElevatedButton("Nulo", icon=ft.Icons.FLAG, icon_color=ft.Colors.RED, on_click=click_sensacion, bgcolor=ft.Colors.GREY_200, color=ft.Colors.BLACK, style=estilo_btn, expand=1)
-
         nueva_tarjeta = ft.Container(
             content=ft.Column([
                 ft.Row([
@@ -438,9 +429,9 @@ async def main(page: ft.Page):
         numero_serie_global += 1
         campo_kilos.focus()
         page.update()
-
     btn_agregar = ft.ElevatedButton("Agregar", icon=ft.Icons.ADD, on_click=agregar_serie, bgcolor=ft.Colors.PRIMARY, color=ft.Colors.WHITE, height=45)
     
+    # Fila de Acción
     fila_accion_entrenar = ft.Row([
             switch_crono,
             ft.Container(content=contenedor_crono_display, alignment=ft.alignment.center, expand=True),
@@ -509,11 +500,9 @@ async def main(page: ft.Page):
                 next(reader, None)
                 for row in reader:
                     if len(row) >= 6:
-                        if len(row) < 6: continue # Protección
                         ejercicio, kilos, sensacion, fecha_str = row[2], float(row[3]), row[5], row[0]
                         if sensacion.strip() == "Nulo": continue
-                        if ejercicio not in records_dict or kilos > records_dict[ejercicio]["kg"]:
-                            records_dict[ejercicio] = {"kg": kilos, "fecha": fecha_str}
+                        if ejercicio not in records_dict or kilos > records_dict[ejercicio]["kg"]: records_dict[ejercicio] = {"kg": kilos, "fecha": fecha_str}
             nuevas_filas = []
             hoy = datetime.date.today()
             for ej, data in records_dict.items():
@@ -526,7 +515,7 @@ async def main(page: ft.Page):
     actualizar_tabla_records()
     vista_records = ft.Container(content=ft.Column([ft.Text("Mis Récords Actuales", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK), ft.Divider(), ft.ElevatedButton("Ingresar Nuevo RM", on_click=lambda e: page.open(dlg_nuevo_rm), bgcolor=ft.Colors.PRIMARY, color=ft.Colors.WHITE), ft.Divider(color=ft.Colors.TRANSPARENT, height=20), ft.Column([tabla_records], scroll=ft.ScrollMode.AUTO, expand=True)], expand=True), padding=20, expand=True)
 
-    # --- PESTAÑA GRÁFICOS (SCATTER MEJORADO) ---
+    # --- PESTAÑA GRÁFICOS ---
     dropdown_filtro_grafico = ft.Dropdown(label="Selecciona Ejercicio", width=float('inf'), options=[ft.dropdown.Option("Todos")], value="Todos", on_change=lambda e: actualizar_grafico(e))
     chart_container = ft.Container(height=350, bgcolor=ft.Colors.WHITE, padding=ft.padding.only(top=10, left=10, right=20, bottom=60), border_radius=10, border=ft.border.all(1, ft.Colors.BLACK))
 
@@ -590,14 +579,12 @@ async def main(page: ft.Page):
             chart_container.content = ft.Text("Sin datos", color=ft.Colors.GREY)
             if page: page.update()
             return
-        
         puntos_bien, puntos_regular, puntos_mal, puntos_nulo, puntos_sin_calif = [], [], [], [], []
         max_historico = 0
         conteo_por_fecha = {}
         todos_timestamps = []
         fechas_unicas = set()
         rows_filtradas = []
-
         try:
              with open(nombre_archivo, mode='r', encoding='utf-8') as file:
                 reader = csv.reader(file)
@@ -606,27 +593,27 @@ async def main(page: ft.Page):
                 for row in all_rows:
                     if len(row) < 6: continue
                     if row[2] == ejercicio_seleccionado:
+                        # Calcular MAX GLOBAL (Entrenamientos Validos + RM Manuales)
                         try:
                             peso = float(row[3])
                             sensacion = row[5].strip()
-
-                            # 1. CALCULAR MAX HISTORICO (GLOBAL)
-                            es_rm_manual = (row[1] == "RM")
-                            es_valido = (row[1] != "RM" and sensacion != "Nulo")
+                            es_rm = (row[1] == "RM")
+                            es_valido = (sensacion != "Nulo")
                             
-                            if es_rm_manual or es_valido:
+                            # Si es RM manual o Entrenamiento Valido, cuenta para el maximo
+                            if es_rm or es_valido:
                                 if peso > max_historico: max_historico = peso
-                            
-                            if es_rm_manual: continue # No graficar RM
+                        except: pass
 
-                            # 2. FILTRAR DATOS
-                            if filtro_peso_min is not None and peso < filtro_peso_min: continue
-                            if filtro_peso_max is not None and peso > filtro_peso_max: continue
-                            
-                            rows_filtradas.append(row)
-                            fechas_unicas.add(row[0])
-
-                        except ValueError: pass
+                        # Filtrar para graficar (Solo si NO es RM manual)
+                        if row[1] != "RM":
+                            try:
+                                peso = float(row[3])
+                                if filtro_peso_min is not None and peso < filtro_peso_min: continue
+                                if filtro_peso_max is not None and peso > filtro_peso_max: continue
+                                rows_filtradas.append(row)
+                                fechas_unicas.add(row[0])
+                            except: pass
         except: pass
 
         if not rows_filtradas:
@@ -669,14 +656,14 @@ async def main(page: ft.Page):
         max_x = len(fechas_unicas) + 1 
         series_chart = []
 
-        # LINEAS AL FONDO
+        # LINEAS AZULES AL FONDO
         if max_historico > 0:
             series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico), ft.LineChartDataPoint(x=max_x, y=max_historico, tooltip="100%")], color=ft.Colors.BLUE_900, stroke_width=3, dash_pattern=[5, 5], point=False))
             series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico*0.85), ft.LineChartDataPoint(x=max_x, y=max_historico*0.85, tooltip="85%")], color=ft.Colors.BLUE_700, stroke_width=2, dash_pattern=[5, 5], point=False))
             series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico*0.70), ft.LineChartDataPoint(x=max_x, y=max_historico*0.70, tooltip="70%")], color=ft.Colors.BLUE_400, stroke_width=2, dash_pattern=[5, 5], point=False))
             series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico*0.50), ft.LineChartDataPoint(x=max_x, y=max_historico*0.50, tooltip="50%")], color=ft.Colors.BLUE_200, stroke_width=2, dash_pattern=[5, 5], point=False))
 
-        # PUNTOS
+        # PUNTOS ENCIMA
         if puntos_bien: series_chart.append(ft.LineChartData(data_points=puntos_bien, color=ft.Colors.GREEN, stroke_width=0, point=True))
         if puntos_regular: series_chart.append(ft.LineChartData(data_points=puntos_regular, color=ft.Colors.AMBER, stroke_width=0, point=True))
         if puntos_mal: series_chart.append(ft.LineChartData(data_points=puntos_mal, color=ft.Colors.RED, stroke_width=0, point=True))
@@ -690,11 +677,7 @@ async def main(page: ft.Page):
             max_y=filtro_peso_max if filtro_peso_max is not None else None,
             border=ft.border.only(left=ft.BorderSide(1, ft.Colors.BLACK), bottom=ft.BorderSide(1, ft.Colors.BLACK)),
             left_axis=ft.ChartAxis(labels_size=40, title=ft.Text("Kg"), title_size=20, labels_interval=20),
-            bottom_axis=ft.ChartAxis(
-                title=ft.Text("N° Entrenamiento"), title_size=20,
-                labels_interval=1,
-                labels_size=30
-            ),
+            bottom_axis=ft.ChartAxis(title=ft.Text("N° Entrenamiento"), title_size=20, labels_interval=1, labels_size=30),
             tooltip_bgcolor=ft.Colors.BLACK,
             horizontal_grid_lines=ft.ChartGridLines(color=ft.Colors.GREY_300, width=1, interval=20),
             vertical_grid_lines=ft.ChartGridLines(color=ft.Colors.BLACK, width=1, interval=1),
@@ -706,29 +689,12 @@ async def main(page: ft.Page):
     actualizar_grafico(None)
 
     vista_graficos = ft.Column([
-        ft.Container(
-            content=ft.Column([
-                ft.Text("Progreso de Cargas", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
-                dropdown_filtro_grafico,
-                ft.Divider(),
-                chart_container,
-                 ft.Row([
-                    ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.GREEN, size=12), ft.Text("Bien", size=12),
-                    ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.AMBER, size=12), ft.Text("Reg", size=12),
-                    ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.RED, size=12), ft.Text("Mal/Nulo", size=12),
-                ], alignment=ft.MainAxisAlignment.CENTER),
-                 ft.Text("* Las líneas indican: Máximo Histórico, 85%, 70% y 50% del RM", size=11, color=ft.Colors.GREY_600, italic=True),
-                 ft.Container(height=10),
-                 ft.Text("Referencias de Fecha:", size=12, weight=ft.FontWeight.BOLD),
-                 contenedor_mapeo
-            ], expand=True, scroll=ft.ScrollMode.AUTO),
-            padding=20, expand=True
-        ),
+        ft.Container(content=ft.Column([ft.Text("Progreso de Cargas", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK), dropdown_filtro_grafico, ft.Divider(), chart_container, ft.Row([ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.GREEN, size=12), ft.Text("Bien", size=12), ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.AMBER, size=12), ft.Text("Reg", size=12), ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.RED, size=12), ft.Text("Mal/Nulo", size=12)], alignment=ft.MainAxisAlignment.CENTER), ft.Text("* Las líneas indican: Máximo Histórico, 85%, 70% y 50% del RM", size=11, color=ft.Colors.GREY_600, italic=True), ft.Container(height=10), ft.Text("Referencias de Fecha:", size=12, weight=ft.FontWeight.BOLD), contenedor_mapeo], expand=True, scroll=ft.ScrollMode.AUTO), padding=20, expand=True),
         ft.Divider(thickness=5, color=ft.Colors.GREY_100),
         ft.Container(content=controles_filtro, padding=10, bgcolor=ft.Colors.GREY_50)
     ], expand=True, spacing=0)
 
-    # --- 4. PESTAÑA HISTORIAL ---
+    # --- 4. PESTAÑA HISTORIAL (CRONOLOGICA RECIENTE PRIMERO) ---
     dropdown_filtro_historial = ft.Dropdown(label="Filtrar por ejercicio", width=float('inf'), options=[ft.dropdown.Option("Todos")], value="Todos", on_change=lambda e: actualizar_historial(e), content_padding=10)
     columna_historial = ft.ListView(expand=True, spacing=15, padding=20)
     hist_edit_kilos = ft.TextField(label="Kilos")
@@ -745,10 +711,9 @@ async def main(page: ft.Page):
             reader = csv.reader(file)
             filas_totales = list(reader)
             for i in range(1, len(filas_totales)):
-                if len(filas_totales[i]) < 6: continue # PROTECCION INDEX
+                if len(filas_totales[i]) < 6: continue # PROTECCION
                 if filas_totales[i][0] == detalle_fecha_actual and filas_totales[i][2] == detalle_ejercicio_actual:
                     filas_coincidentes.append({'data': filas_totales[i], 'index_csv': i})
-        
         contenido_detalle.controls.clear()
         contenido_detalle.controls.append(ft.Text(detalle_ejercicio_actual, weight=ft.FontWeight.BOLD, size=16, color=ft.Colors.BLACK))
         contenido_detalle.controls.append(ft.Divider())
@@ -817,37 +782,53 @@ async def main(page: ft.Page):
         nombre_archivo = "historial_entrenamientos.csv"
         if not os.path.isfile(nombre_archivo): return 
         datos_agrupados = {}
-        ejercicios_encontrados = set()
         try:
             with open(nombre_archivo, mode='r', encoding='utf-8') as file:
                 reader = csv.reader(file)
                 filas_totales = list(reader)
                 if len(filas_totales) < 2: return 
+                # --- LOGICA DE ORDENAMIENTO REAL (V61) ---
+                filas_procesadas = []
                 for i in range(1, len(filas_totales)):
                     row = filas_totales[i]
                     if len(row) >= 6:
-                        if row[1] == "RM": continue
-                        ejercicios_encontrados.add(row[2])
+                        try:
+                            fecha_obj = datetime.datetime.strptime(row[0], "%d-%m-%Y")
+                            filas_procesadas.append({'row': row, 'date_obj': fecha_obj, 'index_csv': i})
+                        except: pass
+                
+                # Ordenar de Reciente a Antiguo
+                filas_procesadas.sort(key=lambda x: x['date_obj'], reverse=True)
+                
                 seleccion_actual = dropdown_filtro_historial.value
+                # Recolectar ejercicios del listado ya ordenado
+                ejercicios_encontrados = set()
+                for item in filas_procesadas:
+                    if item['row'][1] != "RM": ejercicios_encontrados.add(item['row'][2])
+                
                 nuevas_opciones = [ft.dropdown.Option("Todos")]
                 for ej in sorted(list(ejercicios_encontrados)):
                     nuevas_opciones.append(ft.dropdown.Option(ej))
                 dropdown_filtro_historial.options = nuevas_opciones
                 if seleccion_actual in [op.key for op in nuevas_opciones]: dropdown_filtro_historial.value = seleccion_actual
                 else: dropdown_filtro_historial.value = "Todos"
+                
                 filtro = dropdown_filtro_historial.value
-                for i in range(len(filas_totales)-1, 0, -1):
-                    row = filas_totales[i]
-                    if len(row) >= 6:
-                        if row[1] == "RM": continue
-                        nombre_ejercicio = row[2]
-                        if filtro == "Todos" or filtro == nombre_ejercicio:
-                            fecha = row[0]
-                            if fecha not in datos_agrupados: datos_agrupados[fecha] = {} 
-                            if nombre_ejercicio not in datos_agrupados[fecha]: datos_agrupados[fecha][nombre_ejercicio] = []
-                            datos_agrupados[fecha][nombre_ejercicio].append({'data': row, 'index_csv': i})
+
+                for item in filas_procesadas:
+                    row = item['row']
+                    idx = item['index_csv']
+                    if row[1] == "RM": continue
+                    nombre_ejercicio = row[2]
+                    if filtro == "Todos" or filtro == nombre_ejercicio:
+                        fecha = row[0]
+                        if fecha not in datos_agrupados: datos_agrupados[fecha] = {} 
+                        if nombre_ejercicio not in datos_agrupados[fecha]: datos_agrupados[fecha][nombre_ejercicio] = []
+                        datos_agrupados[fecha][nombre_ejercicio].append({'data': row, 'index_csv': idx})
+            
             columna_historial.controls.clear()
             if not datos_agrupados: columna_historial.controls.append(ft.Text("No se encontraron registros.", color=ft.Colors.GREY))
+            # datos_agrupados ya se lleno en orden correcto
             for fecha, ejercicios_dict in datos_agrupados.items():
                 header_fecha = ft.Container(content=ft.Text(f"📅 {fecha}", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK87), bgcolor=ft.Colors.GREY_200, padding=10, border_radius=5, alignment=ft.alignment.center_left)
                 filas_resumen = []
@@ -962,20 +943,12 @@ async def main(page: ft.Page):
     # Definimos las pestañas aquí
     tab_inicio = ft.Tab(text="Inicio", icon=ft.Icons.HOME, content=vista_inicio)
     mis_tabs = ft.Tabs(selected_index=0, animation_duration=300, tab_alignment=ft.TabAlignment.CENTER, tabs=[tab_inicio, ft.Tab(text="Entrenar", icon=ft.Icons.FITNESS_CENTER, content=vista_entrenar), ft.Tab(text="Gráficos", icon=ft.Icons.SHOW_CHART, content=vista_graficos), ft.Tab(text="Récords", icon=ft.Icons.EMOJI_EVENTS, content=vista_records), ft.Tab(text="Historial", icon=ft.Icons.HISTORY, content=vista_historial), ft.Tab(text="Ejercicios", icon=ft.Icons.LIST, content=vista_ejercicios)], expand=True)
-    
-    # Inyectamos el botón con la referencia a mis_tabs (ya creada)
     def iniciar_app(e):
-        # Cambio de pestaña al índice 1 (Entrenar)
         mis_tabs.selected_index = 1
         page.update()
-
-    # Se agrega el botón de comenzar al contenedor de inicio
     vista_inicio.content.controls.insert(2, ft.ElevatedButton("Comenzar", on_click=iniciar_app, bgcolor=ft.Colors.PRIMARY, color=ft.Colors.WHITE))
-    
-    # AGREGAMOS LA UI FINAL Y EL UPDATE
-    page.add(ft.SafeArea(mis_tabs, expand=True))
+    page.add(ft.SafeArea(mis_tabs, expand=True)) 
     page.update()
-
     while True:
         if switch_crono.value:
             mins, secs = divmod(segundos, 60)
