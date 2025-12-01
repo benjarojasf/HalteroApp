@@ -167,7 +167,7 @@ async def main(page: ft.Page):
     dlg_backup = ft.AlertDialog(
         title=ft.Row([ft.Text("Gestión de Datos"), btn_copiar_datos], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
         content=ft.Column([
-            ft.Text("Respalda tus datos copiando este texto, o pega un respaldo anterior para restaurar.", size=12, color=ft.Colors.GREY),
+            ft.Text("Respalda tus datos copiando este texto.", size=12, color=ft.Colors.GREY),
             txt_backup,
         ], height=300, width=300),
         actions=[
@@ -198,7 +198,7 @@ async def main(page: ft.Page):
             controls=[
                 ft.Icon(ft.Icons.FITNESS_CENTER, size=120, color=ft.Colors.BLACK),
                 ft.Text("Haltero Tracker", size=32, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
-                ft.Text("v57.0", size=16, color=ft.Colors.GREY),
+                ft.Text("v61.0", size=16, color=ft.Colors.GREY),
                 ft.Container(height=20),
                 ft.Container(height=30),
                 ft.IconButton(icon=ft.Icons.SETTINGS, icon_size=30, tooltip="Configuración", on_click=lambda e: page.open(dlg_configuraciones))
@@ -261,26 +261,18 @@ async def main(page: ft.Page):
     campo_kilos = ft.TextField(label="Kilos", width=80, keyboard_type=ft.KeyboardType.NUMBER, border_color=ft.Colors.PRIMARY, text_align=ft.TextAlign.CENTER, content_padding=5)
     campo_reps = ft.TextField(label="Reps", width=80, keyboard_type=ft.KeyboardType.NUMBER, border_color=ft.Colors.PRIMARY, text_align=ft.TextAlign.CENTER, content_padding=5)
 
-    # --- CORRECCIÓN DEFINITIVA AQUI ---
     def ajustar_kilos(delta):
         try: valor_actual = float(campo_kilos.value) if campo_kilos.value else 0
         except ValueError: valor_actual = 0
-        
-        nuevo_val = max(0, valor_actual + delta)
-        
-        # AQUI ESTABA EL ERROR (new_val vs nuevo_val)
-        if nuevo_val.is_integer():
-            campo_kilos.value = str(int(nuevo_val))
-        else:
-            campo_kilos.value = str(nuevo_val)
+        resultado_final = max(0, valor_actual + delta)
+        campo_kilos.value = str(int(resultado_final)) if resultado_final.is_integer() else str(resultado_final)
         page.update()
 
     def ajustar_reps(delta):
         try: valor_actual = int(campo_reps.value) if campo_reps.value else 0
         except ValueError: valor_actual = 0
-        
-        nuevo_val = max(0, valor_actual + delta)
-        campo_reps.value = str(nuevo_val)
+        resultado_final = max(0, valor_actual + delta)
+        campo_reps.value = str(resultado_final)
         page.update()
 
     input_kilos_group = ft.Row(
@@ -378,7 +370,6 @@ async def main(page: ft.Page):
     def agregar_serie(e):
         nonlocal numero_serie_global
         if not campo_kilos.value or not campo_reps.value or not dd_ejercicio.value: return 
-        
         if contenedor_setup_inicial.visible:
             contenedor_setup_inicial.visible = False
             contenedor_resumen_activo.visible = True
@@ -389,7 +380,6 @@ async def main(page: ft.Page):
         val_kilos = campo_kilos.value
         val_reps = campo_reps.value
         val_ejercicio = dd_ejercicio.value 
-
         edit_kilos = ft.TextField(label="Kilos", value=val_kilos)
         edit_reps = ft.TextField(label="Reps", value=val_reps)
         
@@ -417,9 +407,7 @@ async def main(page: ft.Page):
 
         async def click_sensacion(e):
             for btn in [btn_bien, btn_regular, btn_mal, btn_nulo]:
-                btn.bgcolor = ft.Colors.TRANSPARENT
-                btn.color = ft.Colors.BLACK
-            
+                btn.bgcolor = ft.Colors.TRANSPARENT; btn.color = ft.Colors.BLACK
             sensacion = e.control.text
             if sensacion == "Bien": e.control.bgcolor = ft.Colors.GREEN_400; e.control.color = ft.Colors.WHITE
             elif sensacion == "Regular": e.control.bgcolor = ft.Colors.ORANGE_400; e.control.color = ft.Colors.WHITE
@@ -439,57 +427,32 @@ async def main(page: ft.Page):
             content=ft.Column([
                 ft.Row([
                     ft.Text(f"Serie #{mi_numero_serie}", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
-                    ft.Container(
-                        content=texto_info_serie,
-                        expand=True,
-                        alignment=ft.alignment.center
-                    ),
-                    ft.Row([
-                        ft.IconButton(ft.Icons.EDIT, icon_color=ft.Colors.BLUE_GREY, icon_size=20, on_click=lambda _: page.open(dlg_edit)),
-                        ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=ft.Colors.RED_400, icon_size=20, on_click=borrar_tarjeta)
-                    ], spacing=0)
+                    ft.Container(content=texto_info_serie, expand=True, alignment=ft.alignment.center), 
+                    ft.Row([ft.IconButton(ft.Icons.EDIT, icon_color=ft.Colors.BLUE_GREY, icon_size=20, on_click=lambda _: page.open(dlg_edit)), ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=ft.Colors.RED_400, icon_size=20, on_click=borrar_tarjeta)], spacing=0)
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                 ft.Divider(height=5, color=ft.Colors.TRANSPARENT),
                 ft.Row([btn_bien, btn_regular, btn_mal, btn_nulo], spacing=5)
-            ]),
-            padding=10, 
-            border=ft.border.all(1, ft.Colors.BLACK), 
-            border_radius=10, 
-            bgcolor=ft.Colors.WHITE, 
-            data={"numero": mi_numero_serie, "ejercicio": val_ejercicio, "kilos": val_kilos, "reps": val_reps, "sensacion": "Sin calificar"}
+            ]), padding=10, border=ft.border.all(1, ft.Colors.BLACK), border_radius=10, bgcolor=ft.Colors.WHITE, data={"numero": mi_numero_serie, "ejercicio": val_ejercicio, "kilos": val_kilos, "reps": val_reps, "sensacion": "Sin calificar"}
         )
-
         lista_series.controls.insert(0, nueva_tarjeta)
-        
         numero_serie_global += 1
         campo_kilos.focus()
         page.update()
 
     btn_agregar = ft.ElevatedButton("Agregar", icon=ft.Icons.ADD, on_click=agregar_serie, bgcolor=ft.Colors.PRIMARY, color=ft.Colors.WHITE, height=45)
     
-    fila_accion_entrenar = ft.Row(
-        controls=[
+    fila_accion_entrenar = ft.Row([
             switch_crono,
-            ft.Container(
-                content=contenedor_crono_display, 
-                alignment=ft.alignment.center, 
-                expand=True
-            ),
+            ft.Container(content=contenedor_crono_display, alignment=ft.alignment.center, expand=True),
             btn_agregar
-        ],
-        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-        vertical_alignment=ft.CrossAxisAlignment.CENTER
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER
     )
 
     btn_finalizar_block = ft.ElevatedButton(text="FINALIZAR EJERCICIO", bgcolor=ft.Colors.BLACK, color=ft.Colors.WHITE, on_click=finalizar_entrenamiento, expand=True, height=50, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=5)))
     btn_cancelar_icon = ft.IconButton(icon=ft.Icons.DELETE_FOREVER, icon_color=ft.Colors.RED, icon_size=30, tooltip="Cancelar Entrenamiento", on_click=cancelar_entrenamiento)
     fila_botones_footer = ft.Row(controls=[btn_cancelar_icon, btn_finalizar_block], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, spacing=10)
     seccion_footer = ft.Container(content=ft.Column(controls=[fila_botones_footer], spacing=10), bgcolor=ft.Colors.WHITE, padding=10, border=ft.border.only(top=ft.BorderSide(1, ft.Colors.GREY_300)))
-    
-    header = ft.Container(
-        padding=15,
-        bgcolor=ft.Colors.WHITE,
-        content=ft.Column(controls=[
+    header = ft.Container(padding=15, bgcolor=ft.Colors.WHITE, content=ft.Column(controls=[
             contenedor_setup_inicial,
             contenedor_resumen_activo,
             ft.Divider(height=5, thickness=1),
@@ -497,9 +460,7 @@ async def main(page: ft.Page):
             ft.Container(height=10),
             fila_accion_entrenar,
             ft.Divider(height=1, thickness=1),
-        ])
-    )
-
+        ]))
     vista_entrenar = ft.Column(controls=[header, lista_series, seccion_footer], expand=True, spacing=0)
 
     # --- PESTAÑA RÉCORDS ---
@@ -565,11 +526,10 @@ async def main(page: ft.Page):
     actualizar_tabla_records()
     vista_records = ft.Container(content=ft.Column([ft.Text("Mis Récords Actuales", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK), ft.Divider(), ft.ElevatedButton("Ingresar Nuevo RM", on_click=lambda e: page.open(dlg_nuevo_rm), bgcolor=ft.Colors.PRIMARY, color=ft.Colors.WHITE), ft.Divider(color=ft.Colors.TRANSPARENT, height=20), ft.Column([tabla_records], scroll=ft.ScrollMode.AUTO, expand=True)], expand=True), padding=20, expand=True)
 
-    # --- PESTAÑA GRÁFICOS (SCATTER SECUENCIAL FINAL) ---
+    # --- PESTAÑA GRÁFICOS (SCATTER MEJORADO) ---
     dropdown_filtro_grafico = ft.Dropdown(label="Selecciona Ejercicio", width=float('inf'), options=[ft.dropdown.Option("Todos")], value="Todos", on_change=lambda e: actualizar_grafico(e))
-    # Padding bottom para el grafico y labels
-    chart_container = ft.Container(height=350, bgcolor=ft.Colors.WHITE, padding=ft.padding.only(top=10, left=10, right=20, bottom=60), border_radius=10, border=ft.border.all(1, ft.Colors.GREY_200))
-    
+    chart_container = ft.Container(height=350, bgcolor=ft.Colors.WHITE, padding=ft.padding.only(top=10, left=10, right=20, bottom=60), border_radius=10, border=ft.border.all(1, ft.Colors.BLACK))
+
     tabla_mapeo_fechas = ft.DataTable(columns=[ft.DataColumn(ft.Text("N°", weight=ft.FontWeight.BOLD)), ft.DataColumn(ft.Text("Fecha del Entrenamiento", weight=ft.FontWeight.BOLD))], rows=[], width=float('inf'), heading_row_height=30)
     contenedor_mapeo = ft.Container(content=ft.Column([ft.Text("Referencias de Fecha:", weight=ft.FontWeight.BOLD, size=12), tabla_mapeo_fechas], scroll=ft.ScrollMode.AUTO, height=150), padding=10, bgcolor=ft.Colors.GREY_50, border_radius=5, border=ft.border.all(1, ft.Colors.GREY_300))
 
@@ -630,6 +590,7 @@ async def main(page: ft.Page):
             chart_container.content = ft.Text("Sin datos", color=ft.Colors.GREY)
             if page: page.update()
             return
+        
         puntos_bien, puntos_regular, puntos_mal, puntos_nulo, puntos_sin_calif = [], [], [], [], []
         max_historico = 0
         conteo_por_fecha = {}
@@ -648,18 +609,24 @@ async def main(page: ft.Page):
                         try:
                             peso = float(row[3])
                             sensacion = row[5].strip()
-                            if row[1] != "RM" and sensacion != "Nulo":
-                                if peso > max_historico: max_historico = peso
-                        except: pass
 
-                        if row[1] != "RM":
-                            try:
-                                peso = float(row[3])
-                                if filtro_peso_min is not None and peso < filtro_peso_min: continue
-                                if filtro_peso_max is not None and peso > filtro_peso_max: continue
-                                rows_filtradas.append(row)
-                                fechas_unicas.add(row[0])
-                            except: pass
+                            # 1. CALCULAR MAX HISTORICO (GLOBAL)
+                            es_rm_manual = (row[1] == "RM")
+                            es_valido = (row[1] != "RM" and sensacion != "Nulo")
+                            
+                            if es_rm_manual or es_valido:
+                                if peso > max_historico: max_historico = peso
+                            
+                            if es_rm_manual: continue # No graficar RM
+
+                            # 2. FILTRAR DATOS
+                            if filtro_peso_min is not None and peso < filtro_peso_min: continue
+                            if filtro_peso_max is not None and peso > filtro_peso_max: continue
+                            
+                            rows_filtradas.append(row)
+                            fechas_unicas.add(row[0])
+
+                        except ValueError: pass
         except: pass
 
         if not rows_filtradas:
@@ -702,7 +669,7 @@ async def main(page: ft.Page):
         max_x = len(fechas_unicas) + 1 
         series_chart = []
 
-        # LINEAS DE REFERENCIA (Segmentadas)
+        # LINEAS AL FONDO
         if max_historico > 0:
             series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico), ft.LineChartDataPoint(x=max_x, y=max_historico, tooltip="100%")], color=ft.Colors.BLUE_900, stroke_width=3, dash_pattern=[5, 5], point=False))
             series_chart.append(ft.LineChartData(data_points=[ft.LineChartDataPoint(x=min_x, y=max_historico*0.85), ft.LineChartDataPoint(x=max_x, y=max_historico*0.85, tooltip="85%")], color=ft.Colors.BLUE_700, stroke_width=2, dash_pattern=[5, 5], point=False))
@@ -721,16 +688,16 @@ async def main(page: ft.Page):
             min_x=min_x, max_x=max_x,
             min_y=filtro_peso_min if filtro_peso_min is not None else 0,
             max_y=filtro_peso_max if filtro_peso_max is not None else None,
-            border=ft.border.all(1, ft.Colors.TRANSPARENT),
-            left_axis=ft.ChartAxis(labels_size=40, title=ft.Text("Kg"), title_size=20),
+            border=ft.border.only(left=ft.BorderSide(1, ft.Colors.BLACK), bottom=ft.BorderSide(1, ft.Colors.BLACK)),
+            left_axis=ft.ChartAxis(labels_size=40, title=ft.Text("Kg"), title_size=20, labels_interval=20),
             bottom_axis=ft.ChartAxis(
                 title=ft.Text("N° Entrenamiento"), title_size=20,
                 labels_interval=1,
                 labels_size=30
             ),
             tooltip_bgcolor=ft.Colors.BLACK,
-            horizontal_grid_lines=ft.ChartGridLines(color=ft.Colors.BLACK12, width=1),
-            vertical_grid_lines=ft.ChartGridLines(color=ft.Colors.BLACK12, width=1),
+            horizontal_grid_lines=ft.ChartGridLines(color=ft.Colors.GREY_300, width=1, interval=20),
+            vertical_grid_lines=ft.ChartGridLines(color=ft.Colors.BLACK, width=1, interval=1),
             expand=True
         )
         chart_container.content = chart
